@@ -1,0 +1,1 @@
+"""GitIngest Agent CLI entry point."""
