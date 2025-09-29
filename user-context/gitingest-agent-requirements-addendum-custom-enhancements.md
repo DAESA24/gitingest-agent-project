@@ -756,6 +756,356 @@ Building on multi-location capability:
 3. **Sync to Cloud:** Share context folders across machines
 4. **Analysis Index:** Generate table of contents for context/related-repos/
 5. **Smart Suggestions:** Recommend repos to analyze based on project dependencies
+6. **Context7 Deep Analysis Integration:** Use Context7 MCP server for advanced repository understanding
+7. **Automated Architecture Extraction:** Context7 generates comprehensive architecture diagrams from extracted repos
+8. **Meta-Analysis Capability:** Analyze GitIngest Agent's own codebase using Context7 for self-improvement
+9. **Comparative Analysis:** Use Context7 to compare multiple repositories' architectural patterns
+10. **Context-Aware Code Search:** Context7-powered search across analyzed repositories in context folder
+
+### Phase 3: Context7 MCP Server Integration (Future)
+
+**Executive Summary:**
+Integrate Context7 MCP server to provide deep architectural analysis and cross-repository intelligence for extracted codebases.
+
+#### Use Case 1: Deep Repository Architecture Analysis
+
+**Problem:**
+Current GitIngest Agent extracts repository content but relies on Claude Code for analysis. For complex repositories, deeper structural understanding would be valuable.
+
+**Context7 Solution:**
+```bash
+# After extracting with GitIngest Agent
+cd "Software Projects/react-component-test-project"
+gitingest-agent analyze https://github.com/facebook/react --type architecture
+
+# Enhanced with Context7:
+→ GitIngest extracts content
+→ Context7 processes repository structure
+→ Generates comprehensive architecture documentation:
+  - Component dependency graphs
+  - API surface analysis
+  - Design pattern identification
+  - Architectural decision documentation
+→ Saves enriched analysis to context/related-repos/react-architecture-deep.md
+```
+
+**Benefits:**
+- Deeper insights than token-limited Claude analysis
+- Structured architecture documentation
+- Visual diagrams and dependency maps
+- Pattern detection across large codebases
+
+#### Use Case 2: GitIngest Agent Self-Analysis (Meta)
+
+**Problem:**
+During development/refactoring of GitIngest Agent itself, understanding the tool's own architecture from "outside perspective" would be valuable.
+
+**Context7 Solution:**
+```bash
+# Analyze GitIngest Agent using itself + Context7
+cd "Software Projects/gitingest-agent-project"
+gitingest-agent meta-analyze . --with-context7
+
+# Workflow:
+→ Extract own codebase with GitIngest
+→ Pass to Context7 for structural analysis
+→ Generate self-documentation:
+  - Current architecture state
+  - Module dependencies
+  - Refactoring opportunities
+  - Technical debt identification
+→ Save to analyze/self-analysis/gitingest-agent-architecture.md
+```
+
+**Benefits:**
+- Objective view of own codebase
+- Identify refactoring opportunities
+- Document architecture evolution
+- Support Phase 2+ planning
+
+#### Use Case 3: Comparative Repository Analysis
+
+**Problem:**
+When researching how different projects solve similar problems (e.g., CLI frameworks, testing strategies), need to compare architectural patterns across multiple repos.
+
+**Context7 Solution:**
+```bash
+# Compare CLI implementations across projects
+cd "Software Projects/cli-tool-research"
+gitingest-agent compare-analysis \
+  https://github.com/pallets/click \
+  https://github.com/tiangolo/typer \
+  https://github.com/google/python-fire \
+  --aspect cli-architecture \
+  --with-context7
+
+# Context7 generates:
+→ Comparative architecture analysis
+→ Pattern identification across all repos
+→ Pros/cons matrix
+→ Best practice recommendations
+→ Save to: context/related-repos/cli-frameworks-comparison.md
+```
+
+**Benefits:**
+- Side-by-side architectural comparison
+- Pattern extraction across implementations
+- Decision support for architectural choices
+- Learning from multiple codebases simultaneously
+
+#### Use Case 4: Context-Aware Cross-Repository Search
+
+**Problem:**
+After analyzing multiple repos into context/related-repos/, need to search across all analyses for specific patterns, concepts, or implementations.
+
+**Context7 Solution:**
+```bash
+# Search across all analyzed repositories in context folder
+cd "Software Projects/react-component-test-project"
+gitingest-agent context-search "error boundary implementation" --with-context7
+
+# Context7:
+→ Searches all files in context/related-repos/
+→ Understands code semantics (not just text matching)
+→ Finds relevant implementations across analyzed repos
+→ Provides contextual excerpts with explanations
+→ Links back to specific repo analyses
+```
+
+**Benefits:**
+- Semantic search across analyzed codebases
+- Quick reference discovery
+- Cross-project pattern identification
+- Faster research workflow
+
+#### Technical Design: Context7 Integration
+
+**Architecture Changes:**
+
+```python
+# New module: context7_integration.py
+from mcp import ClientSession
+from anthropic_mcp import ToolManager
+
+class Context7Analyzer:
+    def __init__(self):
+        self.session = ClientSession()
+        self.tools = ToolManager()
+
+    async def deep_analyze(self, repo_content, analysis_type):
+        """
+        Use Context7 to perform deep analysis of extracted repository.
+
+        Args:
+            repo_content: Content from GitIngest extraction
+            analysis_type: architecture, patterns, dependencies, etc.
+
+        Returns:
+            Enriched analysis with Context7 insights
+        """
+        # Connect to Context7 MCP server
+        async with self.session:
+            # Use Context7 tools for repository analysis
+            result = await self.tools.call(
+                "context7_analyze_repository",
+                content=repo_content,
+                analysis_type=analysis_type
+            )
+
+            return self._format_analysis(result)
+
+    async def compare_repositories(self, repo_analyses):
+        """Compare multiple repository analyses using Context7."""
+        async with self.session:
+            result = await self.tools.call(
+                "context7_compare_codebases",
+                repositories=repo_analyses
+            )
+            return self._format_comparison(result)
+```
+
+**CLI Integration:**
+
+```python
+# Enhanced CLI commands with --with-context7 flag
+@gitingest_agent.command()
+@click.argument('url')
+@click.option('--type', required=True)
+@click.option('--with-context7', is_flag=True, help='Use Context7 for deep analysis')
+def analyze(url, type, with_context7):
+    """Analyze repository with optional Context7 enhancement."""
+    # Standard GitIngest extraction
+    content = extract_repository(url)
+
+    if with_context7:
+        # Enhanced analysis using Context7
+        analyzer = Context7Analyzer()
+        analysis = await analyzer.deep_analyze(content, type)
+    else:
+        # Standard Claude Code analysis
+        analysis = generate_analysis(content, type)
+
+    save_analysis(analysis)
+```
+
+**CLAUDE.md Workflow Integration:**
+
+```markdown
+### Step 6A: Optional Context7 Enhancement (Phase 3)
+
+After standard analysis generation:
+
+ASK: "Enhance this analysis with Context7 deep insights?"
+
+IF yes:
+  - Display: "Connecting to Context7 MCP server..."
+  - Call Context7 with extracted repository content
+  - Wait for enriched analysis
+  - Merge Context7 insights with standard analysis
+  - Display: "✓ Analysis enhanced with Context7 architectural insights"
+
+IF no:
+  - Proceed with standard analysis only
+```
+
+#### Implementation Timeline
+
+**Phase 3.1: Basic Context7 Integration (2-3 hours)**
+- Add context7_integration.py module
+- Implement basic deep analysis flow
+- Test with sample repositories
+- Update CLAUDE.md with Context7 workflow
+
+**Phase 3.2: Advanced Features (3-4 hours)**
+- Comparative analysis across repositories
+- Context-aware search
+- Architecture diagram generation
+- Meta-analysis capabilities
+
+**Phase 3.3: Polish & Optimization (1-2 hours)**
+- Caching Context7 results
+- Error handling and fallbacks
+- Performance optimization
+- Documentation
+
+**Total Phase 3 Estimate:** 6-9 hours
+
+#### Prerequisites
+
+**Before Phase 3:**
+- ✅ Phase 1 complete (Core GitIngest Agent working)
+- ✅ Phase 1.5 complete (Multi-location support)
+- ✅ Context7 MCP server installed and configured
+- ✅ MCP SDK dependencies added to pyproject.toml
+
+**Dependencies:**
+```toml
+[project.dependencies]
+# Phase 3 additions:
+mcp = ">=1.0.0"
+anthropic-mcp = ">=0.1.0"
+```
+
+#### Testing Strategy
+
+**Test Scenarios:**
+
+1. **Deep Analysis Test:**
+   - Extract FastAPI repository
+   - Run with --with-context7 flag
+   - Verify Context7 generates enhanced insights
+   - Compare to standard analysis
+
+2. **Fallback Test:**
+   - Run with Context7 unavailable
+   - Verify graceful fallback to standard analysis
+   - User receives clear error message
+
+3. **Meta-Analysis Test:**
+   - Analyze GitIngest Agent's own codebase
+   - Verify self-analysis produces useful insights
+   - Check for circular reference issues
+
+4. **Comparative Analysis Test:**
+   - Analyze multiple CLI frameworks
+   - Generate comparison report
+   - Verify insights across repositories
+
+#### Success Metrics
+
+**Phase 3 Success Criteria:**
+- [ ] Context7 integration works end-to-end
+- [ ] Deep analysis provides additional value over standard analysis
+- [ ] Graceful fallback when Context7 unavailable
+- [ ] Meta-analysis generates useful self-documentation
+- [ ] Comparative analysis works across multiple repos
+- [ ] Performance acceptable (< 2x standard analysis time)
+
+#### Risk Assessment
+
+**Risk 1: Context7 Dependency Adds Complexity**
+- **Probability:** Medium
+- **Impact:** Medium
+- **Mitigation:**
+  - Make Context7 optional (--with-context7 flag)
+  - Graceful fallback to standard analysis
+  - Phase 3 is completely optional
+
+**Risk 2: Context7 Analysis Time Too Slow**
+- **Probability:** Medium
+- **Impact:** Low (user experience)
+- **Mitigation:**
+  - Display progress indicator during analysis
+  - Cache Context7 results
+  - Allow async analysis (return later)
+
+**Risk 3: Context7 MCP Server Unavailable**
+- **Probability:** Low
+- **Impact:** Low (fallback works)
+- **Mitigation:**
+  - Check Context7 availability before calling
+  - Clear error messages
+  - Fallback to standard analysis automatically
+
+#### Documentation Requirements
+
+**User Documentation:**
+```markdown
+## Advanced Analysis with Context7 (Phase 3)
+
+For deeper architectural insights, GitIngest Agent integrates with Context7 MCP server.
+
+### Prerequisites:
+1. Install Context7 MCP server: `npm install -g @context7/mcp-server`
+2. Configure Context7 in Claude Desktop settings
+
+### Usage:
+# Deep architecture analysis
+gitingest-agent analyze <url> --type architecture --with-context7
+
+# Comparative analysis
+gitingest-agent compare-analysis <url1> <url2> --with-context7
+
+# Self-analysis
+gitingest-agent meta-analyze . --with-context7
+
+### What Context7 Adds:
+- Comprehensive architecture diagrams
+- Design pattern identification
+- Cross-repository insights
+- Semantic code search
+- Comparative architecture analysis
+```
+
+#### Future Phase 3+ Extensions
+
+Building on Context7 foundation:
+
+1. **Real-time Code Understanding:** Stream analysis as repositories extract
+2. **Interactive Exploration:** Chat with Context7 about analyzed repositories
+3. **Architecture Evolution Tracking:** Compare repository versions over time
+4. **Best Practice Detection:** Identify patterns from high-quality repos
+5. **Custom Analysis Profiles:** User-defined analysis templates
 
 ---
 
