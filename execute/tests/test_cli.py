@@ -53,7 +53,7 @@ class TestCheckSizeCommand:
             result = self.runner.invoke(check_size, ['https://invalid-url'])
 
             assert result.exit_code == 1
-            assert "❌ Invalid URL:" in result.output
+            assert "[ERROR] Invalid URL:" in result.output
             assert "Invalid GitHub URL format" in result.output
 
     def test_check_size_network_error(self):
@@ -62,7 +62,7 @@ class TestCheckSizeCommand:
             result = self.runner.invoke(check_size, ['https://github.com/user/repo'])
 
             assert result.exit_code == 1
-            assert "❌ Error:" in result.output
+            assert "[ERROR]" in result.output
             assert "Network error: Connection timeout" in result.output
 
     def test_check_size_gitingest_timeout(self):
@@ -71,7 +71,7 @@ class TestCheckSizeCommand:
             result = self.runner.invoke(check_size, ['https://github.com/huge/repo'])
 
             assert result.exit_code == 1
-            assert "❌ Error:" in result.output
+            assert "[ERROR]" in result.output
             assert "GitIngest request timed out" in result.output
 
     def test_check_size_missing_url(self):
@@ -159,7 +159,7 @@ class TestCLIIntegration:
             )
 
             assert result.exit_code == 1
-            assert "❌ Invalid URL:" in result.output
+            assert "[ERROR] Invalid URL:" in result.output
             assert "Repository not found" in result.output
 
 
@@ -180,7 +180,7 @@ class TestExtractFullCommand:
 
                         assert result.exit_code == 0
                         assert "Extracting full repository..." in result.output
-                        assert "✓ Saved to:" in result.output
+                        assert "[OK] Saved to:" in result.output
                         assert "/path/to/data/test-repo/digest.txt" in result.output
                         assert "Token count: 145,000 tokens" in result.output
 
@@ -202,7 +202,7 @@ class TestExtractFullCommand:
                 result = self.runner.invoke(extract_full, ['https://github.com/user/notfound'])
 
                 assert result.exit_code == 1
-                assert "❌ Extraction failed:" in result.output
+                assert "[ERROR] Extraction failed:" in result.output
                 assert "Repository not found" in result.output
 
     def test_extract_full_storage_error(self):
@@ -212,7 +212,7 @@ class TestExtractFullCommand:
                 result = self.runner.invoke(extract_full, ['https://github.com/user/repo'])
 
                 assert result.exit_code == 1
-                assert "❌ Storage error:" in result.output
+                assert "[ERROR] Storage error:" in result.output
                 assert "Permission denied" in result.output
 
     def test_extract_full_validation_error(self):
@@ -221,7 +221,7 @@ class TestExtractFullCommand:
             result = self.runner.invoke(extract_full, ['https://invalid-url'])
 
             assert result.exit_code == 1
-            assert "❌ Invalid URL:" in result.output
+            assert "[ERROR] Invalid URL:" in result.output
 
     def test_extract_full_missing_url(self):
         """Test extract-full without URL argument."""
@@ -258,7 +258,7 @@ class TestExtractTreeCommand:
                 assert "Repository structure:" in result.output
                 assert "README.md" in result.output
                 assert "src/" in result.output
-                assert "✓ Saved to:" in result.output
+                assert "[OK] Saved to:" in result.output
                 assert "/path/to/data/test-repo/tree.txt" in result.output
 
     def test_extract_tree_displays_tree_content(self):
@@ -280,7 +280,7 @@ class TestExtractTreeCommand:
                 result = self.runner.invoke(extract_tree, ['https://github.com/user/repo'])
 
                 assert result.exit_code == 1
-                assert "❌ Extraction failed:" in result.output
+                assert "[ERROR] Extraction failed:" in result.output
                 assert "Connection timeout" in result.output
 
     def test_extract_tree_storage_error(self):
@@ -290,7 +290,7 @@ class TestExtractTreeCommand:
                 result = self.runner.invoke(extract_tree, ['https://github.com/user/repo'])
 
                 assert result.exit_code == 1
-                assert "❌ Storage error:" in result.output
+                assert "[ERROR] Storage error:" in result.output
 
     def test_extract_tree_help(self):
         """Test extract-tree command help output."""
@@ -320,7 +320,7 @@ class TestExtractSpecificCommand:
 
                         assert result.exit_code == 0
                         assert "Extracting docs content..." in result.output
-                        assert "✓ Saved to:" in result.output
+                        assert "[OK] Saved to:" in result.output
                         assert "Token count: 89,450 tokens" in result.output
 
     def test_extract_specific_installation_type(self):
@@ -392,7 +392,7 @@ class TestExtractSpecificCommand:
                 )
 
                 assert result.exit_code == 1
-                assert "❌ Extraction failed:" in result.output
+                assert "[ERROR] Extraction failed:" in result.output
 
     def test_extract_specific_storage_error(self):
         """Test error handling for storage failure."""
@@ -404,7 +404,7 @@ class TestExtractSpecificCommand:
                 )
 
                 assert result.exit_code == 1
-                assert "❌ Storage error:" in result.output
+                assert "[ERROR] Storage error:" in result.output
 
     def test_extract_specific_help(self):
         """Test extract-specific command help output."""
@@ -461,7 +461,7 @@ class TestTokenOverflowPrevention:
                         assert "Options:" in result.output
                         assert "1) Narrow selection further" in result.output
                         assert "2) Proceed with partial content" in result.output
-                        assert "Warning: Proceeding with content exceeding token limit" in result.output
+                        assert "[WARNING] Proceeding with content exceeding token limit" in result.output
 
     def test_extract_specific_overflow_narrow_once(self):
         """Test iterative refinement with one narrowing iteration."""

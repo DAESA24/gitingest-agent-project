@@ -47,10 +47,10 @@ def check_size(url: str):
         click.echo(f"Route: {route}")
 
     except ValidationError as e:
-        click.echo(f"❌ Invalid URL: {e}", err=True)
+        click.echo(f"[ERROR] Invalid URL: {e}", err=True)
         raise click.Abort()
     except GitIngestError as e:
-        click.echo(f"❌ Error: {e}", err=True)
+        click.echo(f"[ERROR] {e}", err=True)
         raise click.Abort()
 
 
@@ -83,17 +83,17 @@ def extract_full(url: str):
         formatted = format_token_count(token_count)
 
         # Display confirmation
-        click.echo(f"✓ Saved to: {output_path}")
+        click.echo(f"[OK] Saved to: {output_path}")
         click.echo(f"Token count: {formatted}")
 
     except ValidationError as e:
-        click.echo(f"❌ Invalid URL: {e}", err=True)
+        click.echo(f"[ERROR] Invalid URL: {e}", err=True)
         raise click.Abort()
     except StorageError as e:
-        click.echo(f"❌ Storage error: {e}", err=True)
+        click.echo(f"[ERROR] Storage error: {e}", err=True)
         raise click.Abort()
     except GitIngestError as e:
-        click.echo(f"❌ Extraction failed: {e}", err=True)
+        click.echo(f"[ERROR] Extraction failed: {e}", err=True)
         raise click.Abort()
 
 
@@ -125,16 +125,16 @@ def extract_tree(url: str):
         click.echo("\nRepository structure:")
         click.echo(tree_content)
 
-        click.echo(f"\n✓ Saved to: {output_path}")
+        click.echo(f"\n[OK] Saved to: {output_path}")
 
     except ValidationError as e:
-        click.echo(f"❌ Invalid URL: {e}", err=True)
+        click.echo(f"[ERROR] Invalid URL: {e}", err=True)
         raise click.Abort()
     except StorageError as e:
-        click.echo(f"❌ Storage error: {e}", err=True)
+        click.echo(f"[ERROR] Storage error: {e}", err=True)
         raise click.Abort()
     except GitIngestError as e:
-        click.echo(f"❌ Extraction failed: {e}", err=True)
+        click.echo(f"[ERROR] Extraction failed: {e}", err=True)
         raise click.Abort()
 
 
@@ -177,7 +177,7 @@ def extract_specific(url: str, content_type: str):
             formatted = format_token_count(token_count)
 
             # Display confirmation
-            click.echo(f"✓ Saved to: {output_path}")
+            click.echo(f"[OK] Saved to: {output_path}")
             click.echo(f"Token count: {formatted}")
 
             # Check for overflow (threshold: 200k tokens)
@@ -187,7 +187,7 @@ def extract_specific(url: str, content_type: str):
 
             # Overflow detected - warn user and prompt for action
             overflow = token_count - 200_000
-            click.echo(f"\n⚠️  Content exceeds token limit!")
+            click.echo(f"\n[WARNING] Content exceeds token limit!")
             click.echo(f"   Current: {formatted}")
             click.echo(f"   Target: 200,000 tokens")
             click.echo(f"   Overflow: {overflow:,} tokens")
@@ -199,7 +199,7 @@ def extract_specific(url: str, content_type: str):
 
             if choice == 2:
                 # User chooses to proceed despite overflow
-                click.echo("\n⚠️  Warning: Proceeding with content exceeding token limit")
+                click.echo("\n[WARNING] Proceeding with content exceeding token limit")
                 click.echo("   Analysis may be truncated")
                 break
             elif choice == 1:
@@ -224,13 +224,13 @@ def extract_specific(url: str, content_type: str):
                 click.echo("Invalid choice. Please select 1 or 2.")
 
     except ValidationError as e:
-        click.echo(f"❌ Invalid input: {e}", err=True)
+        click.echo(f"[ERROR] Invalid input: {e}", err=True)
         raise click.Abort()
     except StorageError as e:
-        click.echo(f"❌ Storage error: {e}", err=True)
+        click.echo(f"[ERROR] Storage error: {e}", err=True)
         raise click.Abort()
     except GitIngestError as e:
-        click.echo(f"❌ Extraction failed: {e}", err=True)
+        click.echo(f"[ERROR] Extraction failed: {e}", err=True)
         raise click.Abort()
 
 
