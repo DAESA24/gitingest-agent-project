@@ -414,3 +414,160 @@ class TestExtractSpecificCommand:
         assert "Extract specific content" in result.output
         assert "--type" in result.output
         assert "docs" in result.output or "installation" in result.output
+
+
+class TestTokenOverflowPrevention:
+    """Test token overflow prevention and re-check logic."""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.runner = CliRunner()
+
+    def test_extract_specific_under_threshold_no_prompt(self):
+        """Test no prompting when content is under 200k tokens."""
+        with patch('cli.parse_repo_name', return_value='test-repo'):
+            with patch('cli.extractor.extract_specific', return_value='/path/installation-content.txt'):
+                with patch('cli.count_tokens_from_file', return_value=12_450):
+                    with patch('cli.format_token_count', return_value='12,450 tokens'):
+                        result = self.runner.invoke(
+                            extract_specific,
+                            ['https://github.com/user/repo', '--type', 'installation']
+                        )
+
+                        assert result.exit_code == 0
+                        assert "Token count: 12,450 tokens" in result.output
+                        assert "Content exceeds" not in result.output
+                        assert "Options:" not in result.output
+
+    def test_extract_specific_overflow_detected_proceed(self):
+        """Test overflow warning displayed when content exceeds 200k and user proceeds."""
+        with patch('cli.parse_repo_name', return_value='test-repo'):
+            with patch('cli.extractor.extract_specific', return_value='/path/docs-content.txt'):
+                with patch('cli.count_tokens_from_file', return_value=287_523):
+                    with patch('cli.format_token_count', return_value='287,523 tokens'):
+                        # Simulate user choosing to proceed (option 2)
+                        result = self.runner.invoke(
+                            extract_specific,
+                            ['https://github.com/user/repo', '--type', 'docs'],
+                            input='2\n'
+                        )
+
+                        assert result.exit_code == 0
+                        assert "Content exceeds token limit" in result.output
+                        assert "287,523 tokens" in result.output
+                        assert "Target: 200,000 tokens" in result.output
+                        assert "Overflow:" in result.output
+                        assert "87,523 tokens" in result.output
+                        assert "Options:" in result.output
+                        assert "1) Narrow selection further" in result.output
+                        assert "2) Proceed with partial content" in result.output
+                        assert "Warning: Proceeding with content exceeding token limit" in result.output
+
+    def test_extract_specific_overflow_narrow_once(self):
+        """Test iterative refinement with one narrowing iteration."""
+        with patch('cli.parse_repo_name', return_value='test-repo'):
+            with patch('cli.extractor.extract_specific') as mock_extract:
+                # First extraction: overflow, second extraction: success
+                mock_extract.side_effect = [
+                    '/path/docs-content.txt',
+                    '/path/installation-content.txt'
+                ]
+
+                with patch('cli.count_tokens_from_file') as mock_count:
+                    with patch('cli.format_token_count') as mock_format:
+                        # First check: overflow, second check: under threshold
+                        mock_count.side_effect = [287_523, 12_450]
+                        mock_format.side_effect = ['287,523 tokens', '12,450 tokens']
+
+                        # User input: 1 (narrow), then 'installation' as new type
+                        result = self.runner.invoke(
+                            extract_specific,
+                            ['https://github.com/user/repo', '--type', 'docs'],
+                            input='1\ninstallation\n'
+                        )
+
+                        assert result.exit_code == 0
+                        assert "Content exceeds token limit" in result.output
+                        assert "Narrow selection further" in result.output
+                        assert "Extracting installation content" in result.output
+                        assert "12,450 tokens" in result.output
+                        assert mock_extract.call_count == 2
+
+    def test_extract_specific_overflow_narrow_multiple_times(self):
+        """Test iterative refinement with multiple narrowing iterations."""
+        with patch('cli.parse_repo_name', return_value='test-repo'):
+            with patch('cli.extractor.extract_specific') as mock_extract:
+                # Three extractions: docs (overflow), code (still overflow), installation (success)
+                mock_extract.side_effect = [
+                    '/path/docs-content.txt',
+                    '/path/code-content.txt',
+                    '/path/installation-content.txt'
+                ]
+
+                with patch('cli.count_tokens_from_file') as mock_count:
+                    with patch('cli.format_token_count') as mock_format:
+                        # Three checks: overflow, overflow, success
+                        mock_count.side_effect = [287_523, 215_000, 8_500]
+                        mock_format.side_effect = ['287,523 tokens', '215,000 tokens', '8,500 tokens']
+
+                        # User input: 1 (narrow) -> code, 1 (narrow again) -> installation
+                        result = self.runner.invoke(
+                            extract_specific,
+                            ['https://github.com/user/repo', '--type', 'docs'],
+                            input='1\ncode\n1\ninstallation\n'
+                        )
+
+                        assert result.exit_code == 0
+                        assert "Content exceeds token limit" in result.output
+                        assert "Extracting code content" in result.output
+                        assert "Extracting installation content" in result.output
+                        assert "8,500 tokens" in result.output
+                        assert mock_extract.call_count == 3
+
+    def test_extract_specific_at_threshold_no_prompt(self):
+        """Test exact threshold (200k) does not trigger overflow warning."""
+        with patch('cli.parse_repo_name', return_value='test-repo'):
+            with patch('cli.extractor.extract_specific', return_value='/path/docs-content.txt'):
+                with patch('cli.count_tokens_from_file', return_value=199_999):
+                    with patch('cli.format_token_count', return_value='199,999 tokens'):
+                        result = self.runner.invoke(
+                            extract_specific,
+                            ['https://github.com/user/repo', '--type', 'docs']
+                        )
+
+                        assert result.exit_code == 0
+                        assert "199,999 tokens" in result.output
+                        assert "Content exceeds" not in result.output
+
+    def test_extract_specific_just_over_threshold(self):
+        """Test just over threshold (200k) triggers overflow warning."""
+        with patch('cli.parse_repo_name', return_value='test-repo'):
+            with patch('cli.extractor.extract_specific', return_value='/path/docs-content.txt'):
+                with patch('cli.count_tokens_from_file', return_value=200_001):
+                    with patch('cli.format_token_count', return_value='200,001 tokens'):
+                        # User chooses to proceed
+                        result = self.runner.invoke(
+                            extract_specific,
+                            ['https://github.com/user/repo', '--type', 'docs'],
+                            input='2\n'
+                        )
+
+                        assert result.exit_code == 0
+                        assert "Content exceeds token limit" in result.output
+                        assert "Overflow: 1 tokens" in result.output
+
+    def test_extract_specific_overflow_invalid_choice_then_proceed(self):
+        """Test handling invalid user choice, then proceeding."""
+        with patch('cli.parse_repo_name', return_value='test-repo'):
+            with patch('cli.extractor.extract_specific', return_value='/path/docs-content.txt'):
+                with patch('cli.count_tokens_from_file', return_value=250_000):
+                    with patch('cli.format_token_count', return_value='250,000 tokens'):
+                        # User input: invalid choice (3), then valid (2)
+                        result = self.runner.invoke(
+                            extract_specific,
+                            ['https://github.com/user/repo', '--type', 'docs'],
+                            input='3\n2\n'
+                        )
+
+                        assert result.exit_code == 0
+                        assert "Content exceeds token limit" in result.output

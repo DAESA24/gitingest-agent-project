@@ -145,13 +145,16 @@ def extract_tree(url: str):
               help='Type of content to extract')
 def extract_specific(url: str, content_type: str):
     """
-    Extract specific content from repository using filters.
+    Extract specific content from repository using filters with overflow prevention.
 
     Uses content type filters to extract targeted sections:
     - docs: Documentation files (*.md, docs/**, README)
     - installation: Installation files (README, setup.py, package.json)
     - code: Source code (src/**/*.py, lib/**/*.py)
     - auto: Automatic (README + docs)
+
+    Includes token overflow prevention: if extracted content exceeds 200k tokens,
+    prompts user to narrow selection or proceed with partial content.
 
     Args:
         url: GitHub repository URL
@@ -163,18 +166,62 @@ def extract_specific(url: str, content_type: str):
     try:
         repo_name = parse_repo_name(url)
 
+        # Initial extraction
         click.echo(f"Extracting {content_type} content...")
-
-        # Extract specific content
         output_path = extractor.extract_specific(url, repo_name, content_type)
 
-        # Count tokens in result
-        token_count = count_tokens_from_file(output_path)
-        formatted = format_token_count(token_count)
+        # Token re-check loop for overflow prevention
+        while True:
+            # Count tokens in extracted content
+            token_count = count_tokens_from_file(output_path)
+            formatted = format_token_count(token_count)
 
-        # Display confirmation
-        click.echo(f"✓ Saved to: {output_path}")
-        click.echo(f"Token count: {formatted}")
+            # Display confirmation
+            click.echo(f"✓ Saved to: {output_path}")
+            click.echo(f"Token count: {formatted}")
+
+            # Check for overflow (threshold: 200k tokens)
+            if token_count < 200_000:
+                # Success - content is under threshold
+                break
+
+            # Overflow detected - warn user and prompt for action
+            overflow = token_count - 200_000
+            click.echo(f"\n⚠️  Content exceeds token limit!")
+            click.echo(f"   Current: {formatted}")
+            click.echo(f"   Target: 200,000 tokens")
+            click.echo(f"   Overflow: {overflow:,} tokens")
+            click.echo("\nOptions:")
+            click.echo("  1) Narrow selection further")
+            click.echo("  2) Proceed with partial content")
+
+            choice = click.prompt("Select option", type=int, default=1)
+
+            if choice == 2:
+                # User chooses to proceed despite overflow
+                click.echo("\n⚠️  Warning: Proceeding with content exceeding token limit")
+                click.echo("   Analysis may be truncated")
+                break
+            elif choice == 1:
+                # Re-extract with narrower selection
+                click.echo("\nWhat would you like to extract instead?")
+                click.echo("Suggestion: Try a more specific filter:")
+                click.echo("  - installation: Just setup files")
+                click.echo("  - auto: README + minimal docs")
+
+                new_type = click.prompt(
+                    "Content type",
+                    type=click.Choice(['docs', 'installation', 'code', 'auto']),
+                    default='installation'
+                )
+
+                # Re-extract with new content type
+                click.echo(f"\nExtracting {new_type} content...")
+                output_path = extractor.extract_specific(url, repo_name, new_type)
+                content_type = new_type  # Update for next iteration
+            else:
+                # Invalid choice - continue loop to re-prompt
+                click.echo("Invalid choice. Please select 1 or 2.")
 
     except ValidationError as e:
         click.echo(f"❌ Invalid input: {e}", err=True)
