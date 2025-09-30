@@ -212,3 +212,8 @@ execute/__pycache__/
 execute/.pytest_cache/
 execute/.coverage
 execute/*.egg-info/
+
+# GitIngest Agent data directories (extracted repositories)
+data/
+execute/data/
+analyze/

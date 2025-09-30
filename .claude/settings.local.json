@@ -33,7 +33,11 @@
       "Bash(test ! -d .venv)",
       "Bash(uv sync:*)",
       "Bash(git log:*)",
-      "Bash(uv pip install:*)"
+      "Bash(uv pip install:*)",
+      "Bash(gh repo view:*)",
+      "Bash(gh issue create:*)",
+      "Bash(git pull:*)",
+      "Bash(gh issue view:*)"
     ],
     "deny": [],
     "ask": []
