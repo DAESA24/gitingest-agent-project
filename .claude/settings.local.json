@@ -6,7 +6,19 @@
       "Bash(uv add:*)",
       "Bash(uv run:*)",
       "Bash(git checkout:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(gh api:*)",
+      "Bash(cat:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nComplete Story 1.8: CLI Framework & Check-Size Command\n\nImplemented Click-based CLI framework with check-size command for repository token counting and routing decisions.\n\nKey Features:\n- CLI parent command group (gitingest-agent) with Click framework\n- check-size subcommand with URL argument\n- Token count display with formatted output\n- Routing decision display (full vs selective extraction)\n- Entry point configuration tested and verified\n- User-friendly error messages with emoji indicators\n\nImplementation:\n- Created cli.py (56 lines) with Click decorators\n- Integrated with token_counter and workflow modules\n- Proper exception handling for ValidationError and GitIngestError\n- Comprehensive help text and docstrings\n\nTests:\n- Created test_cli.py with 13 comprehensive tests\n- 100% pass rate (13/13 tests passing)\n- 96% coverage on cli.py module\n- Test classes: TestCheckSizeCommand, TestGitingestAgentGroup, TestCLIIntegration\n- Used Click''s CliRunner for CLI testing\n- Mocked module functions to avoid external dependencies\n\nEntry Point Verified:\n- uv run gitingest-agent --help works correctly\n- uv run gitingest-agent check-size --help works correctly\n- Command structure: gitingest-agent <subcommand> <args>\n\nBug Fixes:\n- Fixed README.md Unicode encoding issues (3 invalid UTF-8 bytes)\n\nFiles:\n- cli.py: CLI framework and check-size command\n- tests/test_cli.py: Comprehensive CLI test suite\n- docs/stories/1.8.story.md: Story documentation (complete)\n- README.md: Fixed encoding issues\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git ls-tree:*)",
+      "Bash(git fetch:*)",
+      "Bash(curl -s https://raw.githubusercontent.com/DAESA24/gitingest-agent-project/main/README.md)",
+      "Bash(git merge:*)",
+      "Bash(git commit:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(git push:*)",
+      "Bash(gh issue list:*)"
     ],
     "deny": [],
     "ask": []
