@@ -10,11 +10,13 @@ Tests cover:
 
 import pytest
 from pathlib import Path
+from unittest.mock import patch
 from exceptions import ValidationError, StorageError
 from storage import (
     parse_repo_name,
     ensure_data_directory,
     ensure_analyze_directory,
+    save_analysis,
 )
 
 
@@ -335,3 +337,141 @@ class TestIntegration:
         assert repo_name == "my-awesome-repo"
         assert data_dir.exists()
         assert data_dir.name == "my-awesome-repo"
+
+
+class TestSaveAnalysis:
+    """Test save_analysis function."""
+
+    def test_save_analysis_creates_file(self, tmp_path):
+        """Test save_analysis creates analysis file."""
+        analyze_dir = tmp_path / "analyze" / "installation"
+        analyze_dir.mkdir(parents=True)
+
+        with patch('storage.ensure_analyze_directory', return_value=analyze_dir):
+            content = "# Analysis\n\nDetailed analysis content..."
+            output_path = save_analysis(content, "fastapi", "installation")
+
+            assert Path(output_path).exists()
+            assert "fastapi.md" in output_path
+            assert analyze_dir / "fastapi.md" == Path(output_path)
+
+    def test_save_analysis_includes_metadata(self, tmp_path):
+        """Test saved file includes metadata header."""
+        analyze_dir = tmp_path / "analyze" / "workflow"
+        analyze_dir.mkdir(parents=True)
+
+        with patch('storage.ensure_analyze_directory', return_value=analyze_dir):
+            content = "# Analysis content\n\nThis is the main analysis..."
+            output_path = save_analysis(content, "django", "workflow")
+
+            saved_content = Path(output_path).read_text(encoding='utf-8')
+            assert "# django - Workflow Analysis" in saved_content
+            assert "**Analyzed:**" in saved_content
+            assert "**Analysis Type:** workflow" in saved_content
+            assert "---" in saved_content
+            assert "# Analysis content" in saved_content
+
+    def test_save_analysis_all_types(self, tmp_path):
+        """Test save_analysis with all analysis types."""
+        for analysis_type in ['installation', 'workflow', 'architecture', 'custom']:
+            analyze_dir = tmp_path / "analyze" / analysis_type
+            analyze_dir.mkdir(parents=True, exist_ok=True)
+
+            with patch('storage.ensure_analyze_directory', return_value=analyze_dir):
+                output_path = save_analysis("Test content", "test-repo", analysis_type)
+
+                assert analyze_dir / "test-repo.md" == Path(output_path)
+                assert Path(output_path).exists()
+
+                saved_content = Path(output_path).read_text(encoding='utf-8')
+                assert f"**Analysis Type:** {analysis_type}" in saved_content
+
+    def test_save_analysis_returns_absolute_path(self, tmp_path):
+        """Test absolute path is returned."""
+        analyze_dir = tmp_path / "analyze" / "installation"
+        analyze_dir.mkdir(parents=True)
+
+        with patch('storage.ensure_analyze_directory', return_value=analyze_dir):
+            output_path = save_analysis("Content", "repo", "installation")
+
+            assert Path(output_path).is_absolute()
+
+    def test_save_analysis_overwrites_existing(self, tmp_path):
+        """Test existing file is overwritten with new analysis."""
+        analyze_dir = tmp_path / "analyze" / "installation"
+        analyze_dir.mkdir(parents=True)
+        existing_file = analyze_dir / "repo.md"
+        existing_file.write_text("Old content that should be replaced")
+
+        with patch('storage.ensure_analyze_directory', return_value=analyze_dir):
+            output_path = save_analysis("New analysis content", "repo", "installation")
+
+            saved_content = Path(output_path).read_text(encoding='utf-8')
+            assert "New analysis content" in saved_content
+            assert "Old content that should be replaced" not in saved_content
+
+    def test_save_analysis_metadata_format(self, tmp_path):
+        """Test metadata header format is correct."""
+        analyze_dir = tmp_path / "analyze" / "architecture"
+        analyze_dir.mkdir(parents=True)
+
+        with patch('storage.ensure_analyze_directory', return_value=analyze_dir):
+            content = "## System Design\n\nThe system consists of..."
+            output_path = save_analysis(content, "fastapi", "architecture")
+
+            saved_content = Path(output_path).read_text(encoding='utf-8')
+
+            # Check metadata structure
+            lines = saved_content.split('\n')
+            assert lines[0] == "# fastapi - Architecture Analysis"
+            assert lines[1] == ""
+            assert "**Repository:**" in lines[2]
+            assert "**Analyzed:**" in lines[3]
+            assert "**Analysis Type:** architecture" in lines[4]
+            assert lines[5] == ""
+            assert lines[6] == "---"
+            assert lines[7] == ""
+            # Content starts after metadata
+            assert "## System Design" in saved_content
+
+    def test_save_analysis_date_included(self, tmp_path):
+        """Test analysis includes current date."""
+        analyze_dir = tmp_path / "analyze" / "workflow"
+        analyze_dir.mkdir(parents=True)
+
+        with patch('storage.ensure_analyze_directory', return_value=analyze_dir):
+            from datetime import datetime
+            expected_date = datetime.now().strftime("%Y-%m-%d")
+
+            output_path = save_analysis("Content", "test-repo", "workflow")
+            saved_content = Path(output_path).read_text(encoding='utf-8')
+
+            assert f"**Analyzed:** {expected_date}" in saved_content
+
+    def test_save_analysis_storage_error_directory_creation(self, tmp_path):
+        """Test StorageError raised when directory creation fails."""
+        with patch('storage.ensure_analyze_directory', side_effect=PermissionError("Permission denied")):
+            with pytest.raises(StorageError) as exc_info:
+                save_analysis("Content", "repo", "installation")
+
+            assert "Failed to create analyze directory" in str(exc_info.value)
+
+    def test_save_analysis_storage_error_file_write(self, tmp_path):
+        """Test StorageError raised when file write fails."""
+        analyze_dir = tmp_path / "analyze" / "installation"
+        analyze_dir.mkdir(parents=True)
+
+        with patch('storage.ensure_analyze_directory', return_value=analyze_dir):
+            # Make the file read-only to cause write failure
+            output_file = analyze_dir / "repo.md"
+            output_file.write_text("test")
+            output_file.chmod(0o444)  # Read-only
+
+            try:
+                with pytest.raises(StorageError) as exc_info:
+                    save_analysis("Content", "repo", "installation")
+
+                assert "Failed to write analysis file" in str(exc_info.value)
+            finally:
+                # Restore permissions for cleanup
+                output_file.chmod(0o644)

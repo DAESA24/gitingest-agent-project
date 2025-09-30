@@ -112,3 +112,59 @@ def ensure_analyze_directory(analysis_type: str) -> Path:
         raise StorageError(f"Permission denied creating directory: {analyze_dir}")
     except OSError as e:
         raise StorageError(f"Failed to create directory {analyze_dir}: {e}")
+
+
+def save_analysis(content: str, repo_name: str, analysis_type: str) -> str:
+    """
+    Save analysis to analyze/ folder with metadata header.
+
+    Creates a markdown file containing the analysis with metadata including
+    repository name, analysis date, and analysis type.
+
+    Args:
+        content: Analysis content (markdown format)
+        repo_name: Repository name (used as filename)
+        analysis_type: Type of analysis (installation, workflow, architecture, custom)
+
+    Returns:
+        Absolute path to saved analysis file
+
+    Raises:
+        StorageError: If directory creation or file write fails
+
+    Examples:
+        >>> save_analysis("# Analysis\\n...", "fastapi", "installation")
+        '/path/to/analyze/installation/fastapi.md'
+    """
+    from datetime import datetime
+
+    # Ensure analyze directory exists
+    try:
+        analyze_dir = ensure_analyze_directory(analysis_type)
+    except Exception as e:
+        raise StorageError(f"Failed to create analyze directory: {e}")
+
+    output_file = analyze_dir / f"{repo_name}.md"
+
+    # Generate metadata header
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    metadata = f"""# {repo_name} - {analysis_type.title()} Analysis
+
+**Repository:** https://github.com/{repo_name}
+**Analyzed:** {current_date}
+**Analysis Type:** {analysis_type}
+
+---
+
+"""
+
+    # Combine metadata + content
+    full_content = metadata + content
+
+    # Write to file
+    try:
+        output_file.write_text(full_content, encoding='utf-8')
+    except Exception as e:
+        raise StorageError(f"Failed to write analysis file: {e}")
+
+    return str(output_file.resolve())
