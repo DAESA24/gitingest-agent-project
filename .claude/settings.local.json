@@ -18,7 +18,22 @@
       "Bash(gh pr create:*)",
       "Bash(gh pr merge:*)",
       "Bash(git push:*)",
-      "Bash(gh issue list:*)"
+      "Bash(gh issue list:*)",
+      "Bash(test ! -d tests)",
+      "Bash(if [ -f .coverage ])",
+      "Bash(then mv .coverage execute/.coverage)",
+      "Bash(else echo \"No .coverage file present\")",
+      "Bash(fi)",
+      "Bash(if [ -d __pycache__ ])",
+      "Bash(then rm -rf execute/__pycache__)",
+      "Bash(else echo \"No __pycache__ to move\")",
+      "Bash(if [ -d .pytest_cache ])",
+      "Bash(then mv .pytest_cache execute/.pytest_cache)",
+      "Bash(else echo \"No .pytest_cache to move\")",
+      "Bash(test ! -d .venv)",
+      "Bash(uv sync:*)",
+      "Bash(git log:*)",
+      "Bash(uv pip install:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,0 +1,15 @@
+Usage: cli.py [OPTIONS] COMMAND [ARGS]...
+
+  GitIngest Agent - Automated GitHub repository analysis.
+
+  Analyzes GitHub repositories using GitIngest with intelligent token-aware
+  routing for Claude Code workflows.
+
+Options:
+  --help  Show this message and exit.
+
+Commands:
+  check-size        Check token count and determine extraction strategy.
+  extract-full      Extract entire repository to data/ directory.
+  extract-specific  Extract specific content from repository using...
+  extract-tree      Extract repository tree structure.

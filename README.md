@@ -43,27 +43,42 @@ GitIngest Agent eliminates manual friction in analyzing GitHub repositories by:
 ```
 gitingest-agent-project/
 ├── .bmad-core/              # BMAD framework
-├── .venv/                   # UV virtual environment
 ├── docs/                    # Planning & story documents
 │   ├── prd.md              # Product requirements
 │   ├── architecture.md     # System design
 │   └── stories/            # Implementation stories (1.2-1.14, all complete)
 ├── explore/                 # Research documents
 ├── plan/                    # Planning work
-├── tests/                   # Test suite (190 tests, 96%+ coverage)
+├── user-context/            # User-provided contextual files
+├── execute/                 # Implementation directory (all Python code)
+│   ├── .venv/              # UV virtual environment
+│   ├── tests/              # Test suite (190 tests, 99% coverage)
+│   ├── cli.py              # CLI entry point (Click framework)
+│   ├── token_counter.py    # Token counting & routing logic
+│   ├── workflow.py         # Display formatting utilities
+│   ├── storage.py          # File management & analysis storage
+│   ├── extractor.py        # GitIngest API wrapper
+│   ├── exceptions.py       # Custom exception classes
+│   ├── pyproject.toml      # Python project configuration
+│   └── uv.lock             # Dependency lock file
 ├── analyze/                 # Generated analyses storage
 ├── data/                    # Repository extraction storage
-├── cli.py                   # CLI entry point (Click framework)
-├── token_counter.py         # Token counting & routing logic
-├── workflow.py              # Display formatting utilities
-├── storage.py               # File management & analysis storage
-├── extractor.py             # GitIngest API wrapper
-├── exceptions.py            # Custom exception classes
-├── CLAUDE.md                # Workflow automation guide
+├── CLAUDE.md                # Agent configuration (Claude Code behavior)
 ├── CLAUDE_ANALYSIS_GUIDE.md # Analysis generation specifications
-├── pyproject.toml           # Project configuration
 └── README.md                # This file
 ```
+
+### Structure Explanation
+
+**Root Level:**
+- **BMAD Framework:** `.bmad-core/`, `docs/`, `explore/`, `plan/`, `user-context/`
+- **Agent Configuration:** `CLAUDE.md`, `CLAUDE_ANALYSIS_GUIDE.md` (Claude Code runtime config)
+- **Project Documentation:** `README.md`
+
+**execute/ Directory:**
+- **All Python Implementation:** Source code, tests, and Python environment
+- **Self-Contained:** Complete Python project with its own pyproject.toml and .venv
+- **Working Directory:** All development commands run from execute/
 
 ## Development Setup
 
@@ -80,6 +95,9 @@ gitingest-agent-project/
 # Navigate to project
 cd "Software Projects/gitingest-agent-project"
 
+# Navigate to implementation directory
+cd execute
+
 # Sync environment (creates .venv and installs dependencies)
 uv sync
 
@@ -90,6 +108,8 @@ uv pip install -e .
 uv run gitingest-agent --help
 uv run pytest --version
 ```
+
+**Important:** All development commands must be run from the `execute/` directory.
 
 ## Development Workflow
 
@@ -117,7 +137,12 @@ See `.bmad-core/enhanced-ide-development-workflow.md` for complete workflow deta
 
 ## Testing
 
+All test commands must be run from the `execute/` directory:
+
 ```bash
+# Navigate to execute directory
+cd execute
+
 # Run all tests
 uv run pytest
 
@@ -133,9 +158,12 @@ uv run pytest -v
 
 ## CLI Usage
 
-The CLI is fully implemented and ready to use:
+The CLI is fully implemented and ready to use. All commands run from the `execute/` directory:
 
 ```bash
+# Navigate to execute directory
+cd execute
+
 # Check repository token size
 uv run gitingest-agent check-size https://github.com/user/repo
 
