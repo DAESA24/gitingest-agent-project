@@ -197,6 +197,64 @@ Claude Code will automatically:
 
 See [CLAUDE.md](CLAUDE.md) for complete workflow automation details.
 
+## Known Issues
+
+### Windows UTF-8 Encoding Errors
+
+**Issue:** GitIngest (external dependency) may fail to read UTF-8 files on Windows, resulting in encoding errors in extracted content.
+
+**Symptoms:**
+- Error messages in extracted files: `Error reading file with 'cp1252': 'charmap' codec can't decode byte...`
+- Incomplete repository extraction
+- Missing content from files with special characters (e.g., emojis, non-ASCII characters)
+
+**Affected Platforms:**
+- Windows 11 (all terminals)
+- Any Windows system with default cp1252 encoding
+
+**Workarounds:**
+
+1. **Use file output (recommended):**
+   ```bash
+   # Better than stdout
+   uv run gitingest-agent extract-full https://github.com/user/repo
+   ```
+
+2. **Try selective extraction:**
+   ```bash
+   # Extract only installation files (smaller, fewer encoding issues)
+   uv run gitingest-agent extract-specific https://github.com/user/repo --type installation
+   ```
+
+3. **Manual encoding fix (advanced):**
+   - Set `PYTHONIOENCODING=utf-8` environment variable before running
+   - Use WSL (Windows Subsystem for Linux) instead of native Windows
+
+**Detection:**
+The tool now automatically detects encoding errors and displays warnings like:
+```
+[WARNING] Encoding errors detected in 3 file(s):
+  - README.md
+  - docs/guide.md
+  - src/utils.py
+
+This is a known GitIngest issue on Windows with UTF-8 files.
+```
+
+**Impact:**
+- Medium - Affects content quality but doesn't break core functionality
+- Extraction continues with available content
+- Most files are still readable; only files with special characters are affected
+
+**Status:**
+- This is an external GitIngest library issue, not a bug in GitIngest Agent
+- We've implemented graceful degradation to detect and warn about encoding errors
+- Consider filing an issue with the GitIngest project: https://github.com/cyclotruc/gitingest
+
+**Related:** Issue #7 (Windows encoding issues)
+
+---
+
 ## Documentation
 
 - **[PRD](docs/prd.md)** - Product requirements and user stories

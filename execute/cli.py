@@ -75,8 +75,8 @@ def extract_full(url: str):
 
         click.echo("Extracting full repository...")
 
-        # Extract
-        output_path = extractor.extract_full(url, repo_name)
+        # Extract (returns path and encoding errors)
+        output_path, encoding_errors = extractor.extract_full(url, repo_name)
 
         # Count tokens in result
         token_count = count_tokens_from_file(output_path)
@@ -85,6 +85,16 @@ def extract_full(url: str):
         # Display confirmation
         click.echo(f"[OK] Saved to: {output_path}")
         click.echo(f"Token count: {formatted}")
+
+        # Display encoding warnings if present
+        if encoding_errors:
+            click.echo(f"\n[WARNING] Encoding errors detected in {len(encoding_errors)} file(s):", err=True)
+            for file in encoding_errors[:5]:  # Show first 5
+                click.echo(f"  - {file}", err=True)
+            if len(encoding_errors) > 5:
+                click.echo(f"  ... and {len(encoding_errors) - 5} more", err=True)
+            click.echo("\nThis is a known GitIngest issue on Windows with UTF-8 files.", err=True)
+            click.echo("See README.md 'Known Issues' for workarounds.", err=True)
 
     except ValidationError as e:
         click.echo(f"[ERROR] Invalid URL: {e}", err=True)
@@ -118,14 +128,20 @@ def extract_tree(url: str):
 
         click.echo("Extracting tree structure...")
 
-        # Extract tree (returns path and content)
-        output_path, tree_content = extractor.extract_tree(url, repo_name)
+        # Extract tree (returns path, content, and encoding errors)
+        output_path, tree_content, encoding_errors = extractor.extract_tree(url, repo_name)
 
         # Display tree to user
         click.echo("\nRepository structure:")
         click.echo(tree_content)
 
         click.echo(f"\n[OK] Saved to: {output_path}")
+
+        # Display encoding warnings if present
+        if encoding_errors:
+            click.echo(f"\n[WARNING] Encoding errors detected in {len(encoding_errors)} file(s).", err=True)
+            click.echo("This is a known GitIngest issue on Windows with UTF-8 files.", err=True)
+            click.echo("See README.md 'Known Issues' for workarounds.", err=True)
 
     except ValidationError as e:
         click.echo(f"[ERROR] Invalid URL: {e}", err=True)
@@ -168,7 +184,7 @@ def extract_specific(url: str, content_type: str):
 
         # Initial extraction
         click.echo(f"Extracting {content_type} content...")
-        output_path = extractor.extract_specific(url, repo_name, content_type)
+        output_path, encoding_errors = extractor.extract_specific(url, repo_name, content_type)
 
         # Token re-check loop for overflow prevention
         while True:
@@ -179,6 +195,16 @@ def extract_specific(url: str, content_type: str):
             # Display confirmation
             click.echo(f"[OK] Saved to: {output_path}")
             click.echo(f"Token count: {formatted}")
+
+            # Display encoding warnings if present
+            if encoding_errors:
+                click.echo(f"\n[WARNING] Encoding errors detected in {len(encoding_errors)} file(s):", err=True)
+                for file in encoding_errors[:3]:  # Show first 3
+                    click.echo(f"  - {file}", err=True)
+                if len(encoding_errors) > 3:
+                    click.echo(f"  ... and {len(encoding_errors) - 3} more", err=True)
+                click.echo("\nThis is a known GitIngest issue on Windows with UTF-8 files.", err=True)
+                click.echo("See README.md 'Known Issues' for workarounds.", err=True)
 
             # Check for overflow (threshold: 200k tokens)
             if token_count < 200_000:
@@ -217,7 +243,7 @@ def extract_specific(url: str, content_type: str):
 
                 # Re-extract with new content type
                 click.echo(f"\nExtracting {new_type} content...")
-                output_path = extractor.extract_specific(url, repo_name, new_type)
+                output_path, encoding_errors = extractor.extract_specific(url, repo_name, new_type)
                 content_type = new_type  # Update for next iteration
             else:
                 # Invalid choice - continue loop to re-prompt
