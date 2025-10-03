@@ -6,6 +6,7 @@ Tests cover:
 - Tree structure extraction
 - Selective content extraction
 - GitIngest subprocess execution
+- Encoding error detection
 - Error handling for network, timeout, and filesystem errors
 """
 
@@ -15,11 +16,144 @@ from unittest.mock import Mock, patch, call
 from pathlib import Path
 from exceptions import GitIngestError, StorageError, ValidationError
 from extractor import (
+    _check_encoding_errors,
     _run_gitingest,
     extract_full,
     extract_tree,
     extract_specific,
 )
+
+
+class TestCheckEncodingErrors:
+    """Tests for _check_encoding_errors() function."""
+
+    def test_no_encoding_errors(self, tmp_path):
+        """Test file with no encoding errors returns empty list."""
+        test_file = tmp_path / "test.txt"
+        test_file.write_text("""# Repository: user/repo
+# Estimated Tokens: 1000
+
+================================================================================
+FILE: README.md
+================================================================================
+
+# Hello World
+This is a test repository.
+
+================================================================================
+FILE: src/main.py
+================================================================================
+
+def main():
+    print("Hello")
+""", encoding='utf-8')
+
+        errors = _check_encoding_errors(test_file)
+        assert errors == []
+
+    def test_single_encoding_error(self, tmp_path):
+        """Test detection of single file with encoding error."""
+        test_file = tmp_path / "test.txt"
+        test_file.write_text("""# Repository: user/repo
+
+================================================================================
+FILE: README.md
+================================================================================
+
+Error reading file with 'cp1252': 'charmap' codec can't decode byte 0x9d in position 1294: character maps to <undefined>
+
+================================================================================
+FILE: src/main.py
+================================================================================
+
+def main():
+    print("Hello")
+""", encoding='utf-8')
+
+        errors = _check_encoding_errors(test_file)
+        assert len(errors) == 1
+        assert errors[0] == "README.md"
+
+    def test_multiple_encoding_errors(self, tmp_path):
+        """Test detection of multiple files with encoding errors."""
+        test_file = tmp_path / "test.txt"
+        test_file.write_text("""# Repository: user/repo
+
+================================================================================
+FILE: README.md
+================================================================================
+
+Error reading file with 'cp1252': 'charmap' codec can't decode byte 0x9d
+
+================================================================================
+FILE: docs/guide.md
+================================================================================
+
+Error reading file with 'utf-8': codec can't decode byte 0xff
+
+================================================================================
+FILE: src/main.py
+================================================================================
+
+def main():
+    print("Hello")
+""", encoding='utf-8')
+
+        errors = _check_encoding_errors(test_file)
+        assert len(errors) == 2
+        assert "README.md" in errors
+        assert "docs/guide.md" in errors
+
+    def test_encoding_error_variations(self, tmp_path):
+        """Test detection of different encoding error message formats."""
+        test_file = tmp_path / "test.txt"
+        test_file.write_text("""
+================================================================================
+FILE: file1.txt
+================================================================================
+
+Error reading file with 'cp1252': 'charmap' codec can't decode byte 0x9d
+
+================================================================================
+FILE: file2.txt
+================================================================================
+
+Error reading file with 'utf-8': codec can't decode byte at position 100
+
+================================================================================
+FILE: file3.txt
+================================================================================
+
+Error reading file with 'latin-1': character maps to <undefined>
+""", encoding='utf-8')
+
+        errors = _check_encoding_errors(test_file)
+        assert len(errors) == 3
+        assert "file1.txt" in errors
+        assert "file2.txt" in errors
+        assert "file3.txt" in errors
+
+    def test_file_not_found(self, tmp_path):
+        """Test graceful handling when file doesn't exist."""
+        test_file = tmp_path / "nonexistent.txt"
+        
+        errors = _check_encoding_errors(test_file)
+        assert errors == []  # Should return empty list, not raise exception
+
+    def test_file_with_path_in_filename(self, tmp_path):
+        """Test extraction of full file path from error."""
+        test_file = tmp_path / "test.txt"
+        test_file.write_text("""
+================================================================================
+FILE: docs/installation/guide.md
+================================================================================
+
+Error reading file with 'cp1252': 'charmap' codec can't decode
+""", encoding='utf-8')
+
+        errors = _check_encoding_errors(test_file)
+        assert len(errors) == 1
+        assert errors[0] == "docs/installation/guide.md"
 
 
 class TestRunGitingest:
@@ -146,12 +280,13 @@ class TestExtractFull:
         digest_file.write_text("Repository content", encoding='utf-8')
 
         # Execute
-        result_path = extract_full("https://github.com/user/test-repo", "test-repo")
+        result_path, encoding_errors = extract_full("https://github.com/user/test-repo", "test-repo")
 
         # Verify
         assert Path(result_path).exists()
         assert Path(result_path).name == "digest.txt"
         assert Path(result_path).is_absolute()
+        assert encoding_errors == []
         mock_ensure_dir.assert_called_once_with("test-repo")
         mock_run_gitingest.assert_called_once()
 
@@ -167,7 +302,7 @@ class TestExtractFull:
         # Create digest file
         (data_dir / "digest.txt").write_text("content", encoding='utf-8')
 
-        extract_full("https://github.com/user/repo", "repo")
+        result_path, _ = extract_full("https://github.com/user/repo", "repo")
 
         # Verify GitIngest was called with correct arguments
         call_args = mock_run_gitingest.call_args[0][0]
@@ -185,11 +320,36 @@ class TestExtractFull:
         mock_run_gitingest.return_value = Mock(returncode=0)
         (data_dir / "digest.txt").write_text("content", encoding='utf-8')
 
-        extract_full("https://github.com/user/repo", "repo")
+        result_path, _ = extract_full("https://github.com/user/repo", "repo")
 
         # Verify timeout parameter
         call_kwargs = mock_run_gitingest.call_args[1]
         assert call_kwargs['timeout'] == 300
+
+    @patch('extractor._run_gitingest')
+    @patch('extractor.ensure_data_directory')
+    def test_extract_full_with_encoding_errors(self, mock_ensure_dir, mock_run_gitingest, tmp_path):
+        """Test extract_full detects encoding errors."""
+        data_dir = tmp_path / "data" / "repo"
+        data_dir.mkdir(parents=True)
+        mock_ensure_dir.return_value = data_dir
+        mock_run_gitingest.return_value = Mock(returncode=0)
+
+        # Create digest file with encoding error
+        digest_file = data_dir / "digest.txt"
+        digest_file.write_text("""
+================================================================================
+FILE: README.md
+================================================================================
+
+Error reading file with 'cp1252': 'charmap' codec can't decode byte 0x9d
+""", encoding='utf-8')
+
+        result_path, encoding_errors = extract_full("https://github.com/user/repo", "repo")
+
+        # Verify encoding errors detected
+        assert len(encoding_errors) == 1
+        assert "README.md" in encoding_errors
 
     @patch('extractor.ensure_data_directory')
     def test_extract_full_storage_error(self, mock_ensure_dir):
@@ -220,13 +380,14 @@ class TestExtractTree:
         tree_file.write_text(tree_content, encoding='utf-8')
 
         # Execute
-        result_path, content = extract_tree("https://github.com/user/repo", "repo")
+        result_path, content, encoding_errors = extract_tree("https://github.com/user/repo", "repo")
 
         # Verify
         assert Path(result_path).exists()
         assert Path(result_path).name == "tree.txt"
         assert Path(result_path).is_absolute()
         assert content == tree_content
+        assert encoding_errors == []
         mock_ensure_dir.assert_called_once_with("repo")
 
     @patch('extractor._run_gitingest')
@@ -239,7 +400,7 @@ class TestExtractTree:
         mock_run_gitingest.return_value = Mock(returncode=0)
         (data_dir / "tree.txt").write_text("tree", encoding='utf-8')
 
-        extract_tree("https://github.com/user/repo", "repo")
+        result_path, _, _ = extract_tree("https://github.com/user/repo", "repo")
 
         # Verify GitIngest arguments include filtering
         call_args = mock_run_gitingest.call_args[0][0]
@@ -258,7 +419,7 @@ class TestExtractTree:
         mock_run_gitingest.return_value = Mock(returncode=0)
         (data_dir / "tree.txt").write_text("tree", encoding='utf-8')
 
-        extract_tree("https://github.com/user/repo", "repo")
+        result_path, _, _ = extract_tree("https://github.com/user/repo", "repo")
 
         # Verify timeout parameter
         call_kwargs = mock_run_gitingest.call_args[1]
@@ -288,12 +449,13 @@ class TestExtractSpecific:
         docs_file.write_text("Documentation content", encoding='utf-8')
 
         # Execute
-        result_path = extract_specific("https://github.com/user/repo", "repo", "docs")
+        result_path, encoding_errors = extract_specific("https://github.com/user/repo", "repo", "docs")
 
         # Verify
         assert Path(result_path).exists()
         assert Path(result_path).name == "docs-content.txt"
         assert Path(result_path).is_absolute()
+        assert encoding_errors == []
         mock_get_filters.assert_called_once_with("docs")
 
     @patch('extractor._run_gitingest')
@@ -311,7 +473,7 @@ class TestExtractSpecific:
         mock_run_gitingest.return_value = Mock(returncode=0)
         (data_dir / "installation-content.txt").write_text("Install instructions", encoding='utf-8')
 
-        result_path = extract_specific("https://github.com/user/repo", "repo", "installation")
+        result_path, _ = extract_specific("https://github.com/user/repo", "repo", "installation")
 
         assert "installation-content.txt" in result_path
         mock_get_filters.assert_called_once_with("installation")
@@ -331,7 +493,7 @@ class TestExtractSpecific:
         mock_run_gitingest.return_value = Mock(returncode=0)
         (data_dir / "code-content.txt").write_text("Source code", encoding='utf-8')
 
-        result_path = extract_specific("https://github.com/user/repo", "repo", "code")
+        result_path, _ = extract_specific("https://github.com/user/repo", "repo", "code")
 
         assert "code-content.txt" in result_path
         mock_get_filters.assert_called_once_with("code")
@@ -351,7 +513,7 @@ class TestExtractSpecific:
         mock_run_gitingest.return_value = Mock(returncode=0)
         (data_dir / "auto-content.txt").write_text("Auto selected content", encoding='utf-8')
 
-        result_path = extract_specific("https://github.com/user/repo", "repo", "auto")
+        result_path, _ = extract_specific("https://github.com/user/repo", "repo", "auto")
 
         assert "auto-content.txt" in result_path
         mock_get_filters.assert_called_once_with("auto")
@@ -371,7 +533,7 @@ class TestExtractSpecific:
         mock_run_gitingest.return_value = Mock(returncode=0)
         (data_dir / "docs-content.txt").write_text("content", encoding='utf-8')
 
-        extract_specific("https://github.com/user/repo", "repo", "docs")
+        result_path, _ = extract_specific("https://github.com/user/repo", "repo", "docs")
 
         # Verify include and exclude patterns in GitIngest args
         call_args = mock_run_gitingest.call_args[0][0]
