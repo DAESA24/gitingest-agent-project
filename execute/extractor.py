@@ -37,20 +37,31 @@ def _check_encoding_errors(file_path: Path) -> list[str]:
     try:
         content = file_path.read_text(encoding='utf-8')
         
-        # Pattern: "Error reading file with 'cp1252': 'charmap' codec can't decode"
-        # or similar encoding error messages from GitIngest
-        error_pattern = r"Error reading file with '[^']+': '(?:charmap|codec).*?(?:can't decode|character maps to)"
+        # Pattern: "Error reading file with 'cp1252': ..." various error messages
+        # Matches encoding errors from GitIngest on Windows
+        error_pattern = r"Error reading file with '[^']+'"
         
-        # Find all file sections with encoding errors
-        # Format: FILE: path\n====\nError reading file...
-        file_sections = re.split(r'={80,}', content)
+        # Strategy: Find FILE: declarations and check if followed by error
+        # Match FILE: line (capturing filename)
+        file_pattern = r'FILE:\s*(.+?)$'
         
-        for section in file_sections:
+        # Find all FILE: declarations
+        for file_match in re.finditer(file_pattern, content, re.MULTILINE):
+            filename = file_match.group(1).strip()
+            # Get position after this match to look for error in content
+            start_pos = file_match.end()
+            
+            # Look ahead up to next FILE: or 500 chars for error message
+            next_file = re.search(r'FILE:', content[start_pos:])
+            if next_file:
+                end_pos = start_pos + next_file.start()
+            else:
+                end_pos = start_pos + 500
+            
+            section = content[start_pos:end_pos]
+            
             if re.search(error_pattern, section, re.IGNORECASE):
-                # Extract filename from "FILE: path" at start of section
-                file_match = re.search(r'FILE:\s*(.+?)$', section, re.MULTILINE)
-                if file_match:
-                    encoding_errors.append(file_match.group(1).strip())
+                encoding_errors.append(filename)
     
     except Exception:
         # If we can't read the file, don't fail - just return no errors
