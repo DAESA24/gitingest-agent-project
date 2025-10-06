@@ -1,5 +1,7 @@
 """CLI framework and commands for GitIngest Agent."""
 
+import sys
+import io
 import click
 
 from token_counter import count_tokens, should_extract_full, count_tokens_from_file
@@ -131,11 +133,10 @@ def extract_tree(url: str):
         # Extract tree (returns path, content, and encoding errors)
         output_path, tree_content, encoding_errors = extractor.extract_tree(url, repo_name)
 
-        # Display tree to user
-        click.echo("\nRepository structure:")
-        click.echo(tree_content)
-
-        click.echo(f"\n[OK] Saved to: {output_path}")
+        # Display success and path (tree content saved to file due to encoding issues on Windows)
+        click.echo(f"\n[OK] Tree structure extracted")
+        click.echo(f"[OK] Saved to: {output_path}")
+        click.echo(f"\nView the tree structure in the file above.")
 
         # Display encoding warnings if present
         if encoding_errors:

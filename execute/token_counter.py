@@ -7,6 +7,7 @@ routing decisions for full vs selective extraction based on the 200k token thres
 
 import re
 import subprocess
+import tempfile
 from pathlib import Path
 from exceptions import GitIngestError
 from workflow import validate_github_url
@@ -34,14 +35,33 @@ def count_tokens(url: str) -> int:
     # Validate URL format before attempting GitIngest call
     validate_github_url(url)
 
+    # Use temporary file to avoid Windows stdout encoding issues
+    with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', suffix='.txt', delete=False) as tmp:
+        tmp_path = tmp.name
+
     try:
-        result = subprocess.run(
-            ['gitingest', url, '-o', '-'],
+        # Extract to temp file instead of stdout (avoids Windows encoding issues)
+        subprocess.run(
+            ['gitingest', url, '-o', tmp_path],
             capture_output=True,
             text=True,
+            encoding='utf-8',
+            errors='replace',
             timeout=120,  # 2 minutes
             check=True
         )
+
+        # Read the temp file to get content
+        content = Path(tmp_path).read_text(encoding='utf-8')
+
+        # Try to parse "Estimated tokens: NNNN" from GitIngest output
+        match = re.search(r'Estimated tokens:\s*(\d+)', content)
+        if match:
+            return int(match.group(1))
+
+        # Fallback: Character-based estimation (4 chars ≈ 1 token)
+        return len(content) // 4
+
     except subprocess.TimeoutExpired:
         raise TimeoutError(
             f"Token counting timed out after 120 seconds. "
@@ -60,14 +80,12 @@ def count_tokens(url: str) -> int:
             raise GitIngestError(f"Authentication failed: {url} (private repository?)")
         else:
             raise GitIngestError(f"GitIngest failed: {e.stderr}")
-
-    # Try to parse "Estimated tokens: NNNN" from GitIngest output
-    match = re.search(r'Estimated tokens:\s*(\d+)', result.stdout)
-    if match:
-        return int(match.group(1))
-
-    # Fallback: Character-based estimation (4 chars ≈ 1 token)
-    return len(result.stdout) // 4
+    finally:
+        # Clean up temp file
+        try:
+            Path(tmp_path).unlink()
+        except Exception:
+            pass  # Ignore cleanup errors
 
 
 def count_tokens_from_file(file_path: str) -> int:
