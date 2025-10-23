@@ -57,7 +57,12 @@
       "Bash(node:*)",
       "Bash(npx:*)",
       "Read(//c/Users/drewa/AppData/Roaming/npm/node_modules/mcp-chrome-bridge/**)",
-      "Bash(curl -s http://127.0.0.1:12306/mcp --head)"
+      "Bash(curl -s http://127.0.0.1:12306/mcp --head)",
+      "Read(//c/Users/drewa/work/dev/**)",
+      "Read(//c/Users/drewa/work/**)",
+      "Bash(tree:*)",
+      "Bash(python -m pytest tests/ --co -q)",
+      "Bash(python -m pytest:*)"
     ],
     "deny": [],
     "ask": []
