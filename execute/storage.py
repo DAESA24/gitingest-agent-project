@@ -58,6 +58,10 @@ def ensure_data_directory(repo_name: str) -> Path:
     """
     Ensure data directory exists for repository.
 
+    Creates data/ directory at project root (parent of execute/),
+    not within execute/ directory. This keeps extracted repository
+    content separate from code execution artifacts.
+
     Args:
         repo_name: Repository name (sanitized)
 
@@ -75,7 +79,9 @@ def ensure_data_directory(repo_name: str) -> Path:
         'fastapi'
     """
     try:
-        data_dir = Path("data") / repo_name
+        # Navigate to project root (parent of execute/)
+        project_root = Path(__file__).parent.parent
+        data_dir = project_root / "data" / repo_name
         data_dir.mkdir(parents=True, exist_ok=True)
         return data_dir.resolve()
     except PermissionError:
@@ -87,6 +93,10 @@ def ensure_data_directory(repo_name: str) -> Path:
 def ensure_analyze_directory(analysis_type: str) -> Path:
     """
     Ensure analyze directory exists for analysis type.
+
+    Creates analyze/ directory at project root (parent of execute/),
+    not within execute/ directory. This keeps user-facing analysis
+    outputs separate from code execution artifacts.
 
     Args:
         analysis_type: Type of analysis (installation, workflow, architecture, custom)
@@ -105,7 +115,9 @@ def ensure_analyze_directory(analysis_type: str) -> Path:
         'installation'
     """
     try:
-        analyze_dir = Path("analyze") / analysis_type
+        # Navigate to project root (parent of execute/)
+        project_root = Path(__file__).parent.parent
+        analyze_dir = project_root / "analyze" / analysis_type
         analyze_dir.mkdir(parents=True, exist_ok=True)
         return analyze_dir.resolve()
     except PermissionError:

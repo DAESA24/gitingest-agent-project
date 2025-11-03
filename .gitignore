@@ -213,8 +213,9 @@ execute/.pytest_cache/
 execute/.coverage
 execute/*.egg-info/
 
-# GitIngest Agent data directories (extracted repositories)
+# GitIngest Agent data directories (at project root)
+# - data/: Extracted repository content from gitingest
+# - analyze/: Generated analysis outputs (user-facing)
 data/
-execute/data/
 analyze/
 desktop.ini
