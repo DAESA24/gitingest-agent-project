@@ -14,6 +14,8 @@ Automate the complete workflow from GitHub URL to analyzed repository content, i
 
 When user provides GitHub URL, immediately begin workflow execution.
 
+**Working Directory:** Commands automatically detect and switch to `execute/` directory if needed. You can run gitingest-agent commands from either the project root or the execute/ subdirectory - the CLI handles directory switching transparently.
+
 ## Workflow Steps
 
 ### Step 1: URL Extraction

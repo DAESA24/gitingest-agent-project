@@ -2,6 +2,8 @@
 
 import sys
 import io
+import os
+from pathlib import Path
 import click
 
 from token_counter import count_tokens, should_extract_full, count_tokens_from_file
@@ -9,6 +11,38 @@ from workflow import format_token_count
 from storage import parse_repo_name
 import extractor
 from exceptions import GitIngestError, ValidationError, StorageError
+
+
+def ensure_execute_directory():
+    """
+    Ensure we're running from the execute/ directory.
+
+    Auto-detects project structure and changes to execute/ if needed.
+    This allows commands to work from both project root and execute/ directory.
+    """
+    cwd = Path.cwd()
+
+    # Check if we're in execute/ already
+    if cwd.name == "execute":
+        return
+
+    # Check if execute/ exists as subdirectory (we're in project root)
+    execute_dir = cwd / "execute"
+    if execute_dir.exists() and execute_dir.is_dir():
+        os.chdir(execute_dir)
+        return
+
+    # Check if we're in a subdirectory of the project and need to navigate to execute/
+    # Look for pyproject.toml as marker
+    current = cwd
+    for _ in range(3):  # Search up to 3 levels
+        if (current / "pyproject.toml").exists():
+            # Found project root, check for execute/
+            execute_dir = current / "execute"
+            if execute_dir.exists():
+                os.chdir(execute_dir)
+                return
+        current = current.parent
 
 
 @click.group()
@@ -34,6 +68,7 @@ def check_size(url: str):
     Example:
         gitingest-agent check-size https://github.com/user/repo
     """
+    ensure_execute_directory()
     try:
         click.echo("Checking repository size...")
 
@@ -71,6 +106,7 @@ def extract_full(url: str):
     Example:
         gitingest-agent extract-full https://github.com/octocat/Hello-World
     """
+    ensure_execute_directory()
     try:
         # Parse repository name
         repo_name = parse_repo_name(url)
@@ -125,6 +161,7 @@ def extract_tree(url: str):
     Example:
         gitingest-agent extract-tree https://github.com/fastapi/fastapi
     """
+    ensure_execute_directory()
     try:
         repo_name = parse_repo_name(url)
 
@@ -180,6 +217,7 @@ def extract_specific(url: str, content_type: str):
     Example:
         gitingest-agent extract-specific https://github.com/fastapi/fastapi --type docs
     """
+    ensure_execute_directory()
     try:
         repo_name = parse_repo_name(url)
 
