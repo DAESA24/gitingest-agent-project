@@ -1197,11 +1197,397 @@ This architecture replicates the proven design from the AI LABS video with enhan
 
 ---
 
-**Document Status:** Complete - Ready for Implementation
+## 14. Phase 2.0 Architecture Preview
+
+### 14.1 Overview
+
+**Status:** ✅ Phase 1 Implemented | 📋 Phase 2.0 Proposed
+
+Phase 2.0 extends the current architecture to support **multi-repository analysis** through two key innovations:
+
+1. **TOON Format Integration** - 15-25% token reduction on GitHub API data
+2. **Multi-Agent Architecture** - Parallel sub-agent orchestration for 5+ repositories
+
+**Key Insight:** These technologies create a **multiplicative effect** - TOON saves tokens per repo, while multi-agents provide 5× context windows through parallelization. Together, they enable deep analysis of 5+ repositories that would be impossible with either technique alone.
+
+### 14.2 TOON Format Integration
+
+**What is TOON?**
+
+Token-Oriented Object Notation - an LLM-optimized data format that reduces JSON token consumption by 15-25% (validated via [docker/toon-test/](../docker/toon-test/)).
+
+**Integration Points in Current Architecture:**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│              GitIngest Agent (Current)                      │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │  CLI Layer                                          │   │
+│  │  + extract-full, extract-tree, extract-specific    │   │
+│  └────────────┬────────────────────────────────────────┘   │
+│               │                                             │
+│  ┌────────────┴────────────────────────────────────────┐   │
+│  │  Extractor Module (ENHANCED FOR V2.0)               │   │
+│  │  - extract_full() → add TOON conversion step       │   │
+│  │  - extract_tree() → add TOON conversion step       │   │
+│  │  - extract_specific() → add TOON conversion step   │   │
+│  │  + NEW: extract_github_api() → fetch + TOON convert│   │
+│  └────────────┬────────────────────────────────────────┘   │
+│               │                                             │
+│               │ subprocess.run(['toon'], input=json)        │
+└───────────────┼─────────────────────────────────────────────┘
+                │
+                ▼
+┌─────────────────────────────────────────────────────────────┐
+│              TOON CLI (External Tool)                       │
+│  - JSON → TOON conversion                                   │
+│  - Maintains data integrity (100% decode accuracy)          │
+│  - Installed: npm install -g @toon-format/cli               │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Implementation Pattern:**
+
+```python
+# extractor.py (V2.0 enhancement)
+def extract_with_toon(url: str, repo_name: str, format: str = 'text'):
+    """Extract repository with optional TOON conversion"""
+
+    # Step 1: Extract as text (existing logic)
+    gitingest_output = subprocess.run(['gitingest', url, '-o', '-'])
+
+    # Step 2: Convert to TOON if requested
+    if format == 'toon':
+        result = subprocess.run(
+            ['toon'],
+            input=gitingest_output.stdout,
+            capture_output=True,
+            text=True
+        )
+        content = result.stdout
+        file_ext = 'toon'
+    else:
+        content = gitingest_output.stdout
+        file_ext = 'txt'
+
+    # Step 3: Save with appropriate extension
+    output_file = f"data/{repo_name}/digest.{file_ext}"
+    Path(output_file).write_text(content)
+
+    return output_file
+```
+
+**Storage Module Updates:**
+
+```python
+# storage.py (V2.0 enhancement)
+SUPPORTED_FORMATS = ['txt', 'toon']
+
+def save_extraction(content: str, repo_name: str, format: str = 'txt'):
+    """Save extraction with format-aware file naming"""
+    output_file = f"data/{repo_name}/digest.{format}"
+    Path(output_file).write_text(content)
+    return output_file
+```
+
+**CLI Layer Updates:**
+
+```bash
+# New --format flag for all extraction commands
+gitingest-agent extract-full <url> --format toon
+gitingest-agent extract-tree <url> --format toon
+gitingest-agent extract-specific <url> --type docs --format toon
+```
+
+**External Dependency:**
+
+- **TOON CLI:** `@toon-format/cli` (Node.js package)
+- **Installation:** `npm install -g @toon-format/cli`
+- **Tested:** docker/toon-test/ container (Node.js 20 + TOON CLI v0.7.3+)
+- **Verification:** `toon --version`
+
+### 14.3 Multi-Agent Architecture
+
+**Pattern:** Parallel Sub-Agent Orchestration via Claude Code Task Tool
+
+**Architecture Diagram:**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│         Main Agent (Claude Code - 200k context)             │
+│                                                             │
+│  1. User: "Compare FastAPI, Flask, Django"                 │
+│  2. Launch 3 sub-agents in parallel (Task tool)            │
+│  3. Collect summaries (5k tokens each = 15k total)         │
+│  4. Synthesize comparison (85k tokens for analysis)        │
+└────────────────────┬────────────────────────────────────────┘
+                     │
+                     │ Parallel Task launches
+                     ▼
+┌────────────┬────────────┬────────────┬────────────┐
+│ Sub-Agent 1│ Sub-Agent 2│ Sub-Agent 3│ Sub-Agent 4│
+│            │            │            │            │
+│ FastAPI    │ Flask      │ Django     │ Tornado    │
+│ (200k ctx) │ (200k ctx) │ (200k ctx) │ (200k ctx) │
+│            │            │            │            │
+│ Extract    │ Extract    │ Extract    │ Extract    │
+│ with TOON  │ with TOON  │ with TOON  │ with TOON  │
+│ ↓          │ ↓          │ ↓          │ ↓          │
+│ 59k tokens │ 59k tokens │ 59k tokens │ 59k tokens │
+│ (saved!)   │ (saved!)   │ (saved!)   │ (saved!)   │
+│ ↓          │ ↓          │ ↓          │ ↓          │
+│ Analyze    │ Analyze    │ Analyze    │ Analyze    │
+│ (141k ctx) │ (141k ctx) │ (141k ctx) │ (141k ctx) │
+│ ↓          │ ↓          │ ↓          │ ↓          │
+│ Summary    │ Summary    │ Summary    │ Summary    │
+│ (5k)       │ (5k)       │ (5k)       │ (5k)       │
+└────────────┴────────────┴────────────┴────────────┘
+     │              │             │             │
+     └──────────────┴─────────────┴─────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────────────────────────────┐
+│         Main Agent: Synthesize Comparison                   │
+│                                                             │
+│  Input: 4 × 5k summaries = 20k tokens                      │
+│  Available for synthesis: 180k tokens                       │
+│  Output: Comprehensive multi-repo comparison report        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Integration with Existing Architecture:**
+
+**CLI Layer Enhancement:**
+
+```python
+# cli.py (V2.0 new command)
+@gitingest_agent.command()
+@click.argument('urls', nargs=-1, required=True)
+@click.option('--aspect', default='architecture',
+              help='Comparison aspect (architecture/workflow/installation)')
+@click.option('--format', default='toon',
+              help='Data format (text/toon)')
+@click.option('--parallel', is_flag=True, default=True,
+              help='Use parallel sub-agents (default: True)')
+def compare(urls, aspect, format, parallel):
+    """Compare multiple repositories"""
+
+    if parallel and len(urls) >= 3:
+        # Launch sub-agents in parallel
+        summaries = launch_parallel_agents(urls, aspect, format)
+    else:
+        # Sequential analysis (fallback)
+        summaries = analyze_sequential(urls, aspect, format)
+
+    # Main agent synthesizes comparison
+    comparison = synthesize_comparison(summaries, aspect)
+
+    # Save to analyze/comparison/
+    save_comparison(comparison, urls, aspect)
+```
+
+**Workflow Module Enhancement:**
+
+```python
+# workflow.py (V2.0 new functions)
+def launch_parallel_agents(urls: list[str], aspect: str, format: str) -> list[str]:
+    """
+    Launch parallel sub-agents for multi-repo analysis.
+
+    Uses Claude Code Task tool to spawn isolated agents,
+    each with 200k context window.
+    """
+    agents = []
+
+    for url in urls:
+        agent = Task(
+            subagent_type="Explore",
+            description=f"Analyze {url}",
+            prompt=f"""
+            Analyze {url} focusing on {aspect}.
+
+            1. Extract repository (format: {format})
+            2. Analyze extracted content
+            3. Return concise summary (max 5k tokens)
+
+            Use --format {format} for all extractions.
+            """,
+            model="haiku"  # Fast, efficient for data processing
+        )
+        agents.append(agent)
+
+    # Collect results (blocks until all complete)
+    summaries = [agent.result() for agent in agents]
+
+    return summaries
+
+def synthesize_comparison(summaries: list[str], aspect: str) -> str:
+    """
+    Main agent synthesizes comparison from sub-agent summaries.
+
+    This function is called by main agent with summaries as input.
+    Claude Code generates the synthesized comparison.
+    """
+    # Implementation: Main agent uses summaries to generate comparison
+    # This is declarative - Claude Code does the synthesis
+    pass
+```
+
+**No Changes Required:**
+
+- ✅ **Token Counter Module** - Works as-is (counts TOON files same way)
+- ✅ **Storage Module** - Already supports multiple file types
+- ✅ **Extractor Module** - Enhancement only (existing functions unchanged)
+
+### 14.4 Token Optimization Strategy
+
+**The Multiplicative Effect:**
+
+```
+Without Optimization (V1.0):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Single context window: 200k tokens
+Repository with GitHub API data: 76k (commits) + 20k (issues) = 96k
+Available for analysis: 200k - 96k = 104k tokens
+Repositories per session: 1-2 max
+
+With TOON Only (15-25% savings):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Repository with TOON: 59k (commits) + 16k (issues) = 75k
+Available for analysis: 200k - 75k = 125k tokens
+Improvement: +21k tokens per repo
+Repositories per session: 2-3 max
+
+With Multi-Agents Only (5× context):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5 agents × 200k = 1,000k total context
+Each repo: 96k data + 104k analysis = 200k per agent
+Repositories per session: 5 max (but cramped)
+
+With TOON + Multi-Agents (MULTIPLICATIVE):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5 agents × 200k = 1,000k total context
+Each repo: 75k data + 125k analysis = 200k per agent
+Repositories per session: 5 max (comfortable)
+Extra intelligence: 21k × 5 = 105k additional tokens for analysis
+Result: 40% deeper analysis per repository!
+```
+
+**Winston's Insight:** TOON and multi-agents aren't just additive - they're **multiplicative**. TOON saves tokens that multi-agents then multiply across parallel contexts. This is the key architectural innovation.
+
+### 14.5 Implementation Phases
+
+**Phase 2.1: TOON Foundation (2-4 hours)**
+
+- ✅ **No breaking changes** - TOON is opt-in via `--format` flag
+- Add TOON conversion to extractor module
+- Update CLI with `--format` parameter
+- Test with docker/toon-test/ container
+- Validate token savings (15-25% target)
+
+**Phase 2.2: Multi-Repo Sequential (4-6 hours)**
+
+- ✅ **New command** - `compare` doesn't affect existing commands
+- Implement sequential multi-repo analysis
+- Store intermediate summaries
+- Generate comparison reports
+- Test with 3 repositories
+
+**Phase 2.3: Parallel Sub-Agents (6-8 hours)**
+
+- ✅ **Additive enhancement** - `--parallel` flag for compare command
+- Implement Task tool sub-agent launching
+- Handle parallel completion and aggregation
+- Validate results match sequential mode
+- Performance benchmark (target: 3-5× speedup)
+
+**Phase 2.4: GitHub API Integration (4-6 hours)**
+
+- ✅ **New feature** - `extract-api` command
+- Implement GitHub API client
+- Convert API responses to TOON
+- Store alongside repository files
+- Integrate with compare workflow
+
+**Total Effort:** 16-24 hours across 4 phases
+
+### 14.6 Backward Compatibility
+
+**No Breaking Changes:**
+
+- ✅ All Phase 1 CLI commands work unchanged
+- ✅ All Phase 1 tests pass without modification
+- ✅ Existing data/ and analyze/ storage structure preserved
+- ✅ CLAUDE.md Phase 1 workflow continues to work
+- ✅ Default behavior unchanged (text format, single repo)
+
+**Opt-In Enhancements:**
+
+- `--format toon` flag (optional, defaults to 'text')
+- `compare` command (new, doesn't replace existing)
+- `--parallel` flag (optional, defaults to True for 3+ repos)
+- GitHub API extraction (new feature, opt-in)
+
+### 14.7 Testing Strategy
+
+**Unit Tests (Existing + New):**
+
+- ✅ Existing tests continue to pass
+- Add TOON conversion tests
+- Add multi-agent orchestration tests
+- Add GitHub API client tests
+
+**Integration Tests:**
+
+- Full workflow with `--format toon`
+- Multi-repo sequential comparison
+- Multi-repo parallel comparison
+- Validate parallel == sequential (correctness)
+- Performance benchmarks (parallel vs sequential)
+
+**Manual Tests:**
+
+- CLAUDE.md workflow with TOON format
+- Sub-agent launching and result collection
+- Real-world multi-repo comparison (FastAPI, Flask, Django)
+- Token count verification (15-25% savings)
+
+**Coverage Target:** Maintain 96%+ coverage from Phase 1
+
+### 14.8 Architecture Principles Maintained
+
+**Simplicity First:**
+
+- ✅ TOON integration via subprocess (same pattern as GitIngest)
+- ✅ No new complexity layers
+- ✅ File-based persistence continues
+
+**Proven Patterns:**
+
+- ✅ Subprocess wrapper pattern (GitIngest → TOON)
+- ✅ Click CLI framework (add commands, not replace)
+- ✅ File-based storage (add .toon extension support)
+
+**Extensibility Without Complexity:**
+
+- ✅ Modular enhancements to existing modules
+- ✅ No refactoring of Phase 1 code required
+- ✅ Clean separation: Phase 1 features vs Phase 2 features
+
+**Winston's Assessment:** Phase 2.0 architecture respects Phase 1 foundation while adding significant capability. This is **progressive enhancement done right**.
+
+---
+
+**Document Status:** Phase 1 Complete ✅ | Phase 2.0 Architecture Preview 📋
 
 **Related Documents:**
-- [prd.md](prd.md) - Product Requirements
-- CLAUDE.md - Workflow automation (next document)
+
+- [prd.md](prd.md) - Product Requirements (includes Section 12: Phase 2.0 Vision)
+- [user-context/v2-toon-multiagent-feature-request.md](../user-context/v2-toon-multiagent-feature-request.md) - Detailed V2.0 specification
+- [docker/toon-test/RESULTS.md](../docker/toon-test/RESULTS.md) - TOON validation results
+- CLAUDE.md - Workflow automation
 
 **Version History:**
+
 - 1.0 - Initial architecture for Phase 1 (Core Clone)
+- 1.1 - Added Section 14: Phase 2.0 Architecture Preview

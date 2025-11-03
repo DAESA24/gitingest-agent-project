@@ -913,13 +913,159 @@ These features are documented in the Requirements Addendum and planned for Phase
 
 ---
 
-## 11. Approval & Sign-off
+## 12. Phase 2.0 Vision
+
+### 12.1 Overview
+
+**Status:** ✅ Phase 1 Complete | 📋 Phase 2.0 Proposed
+
+Phase 2.0 extends GitIngest Agent to enable **multi-repository analysis** through TOON format integration and multi-agent architecture. This represents a significant evolution from single-repo analysis to comparative analysis across multiple codebases.
+
+**Key Features:**
+
+- **TOON Format Integration** - Token-Oriented Object Notation for 15-25% token reduction on GitHub API data
+- **Multi-Agent Architecture** - Parallel repository processing with sub-agent orchestration
+- **Multi-Repo Comparison** - Synthesized analysis workflows (e.g., "Compare FastAPI, Flask, Django")
+- **GitHub API Integration** - Commit history, issues, PRs with TOON optimization
+
+**Detailed Specification:** See [user-context/v2-toon-multiagent-feature-request.md](../user-context/v2-toon-multiagent-feature-request.md)
+
+### 12.2 Validation Completed
+
+**Docker Testing Infrastructure:**
+
+- TOON format validated with real GitHub API data
+- 15-25% token savings verified (not marketing claims - real testing)
+- Test results: [docker/toon-test/RESULTS.md](../docker/toon-test/RESULTS.md)
+- Environment: Node.js 20 + TOON CLI v0.7.3+
+
+**Real-World Test Cases:**
+
+- Repository metadata: 4,044 → 3,374 tokens (16.6% savings)
+- Commit history (30 commits): 76,348 → 58,906 tokens (22.8% savings)
+- Conclusion: TOON delivers consistent 15-25% savings on GitHub API responses
+
+### 12.3 Multiplicative Effect: TOON + Multi-Agent
+
+**The Innovation:**
+
+TOON and multi-agent architecture create a **multiplicative benefit**:
+
+- **TOON alone:** 15-25% token savings per repository
+- **Multi-agents alone:** 5× context windows through parallelization
+- **Combined:** 5 repositories × 40% deeper analysis in same infrastructure
+
+**Example Scenario:**
+
+```
+Without optimization (current):
+5 repos × 76k tokens (JSON commits) = 380k tokens
+❌ Exceeds 200k context limit
+
+With TOON + Sub-Agents:
+5 agents × 59k tokens (TOON commits) = 295k total
+✅ Each agent: 200k window
+✅ 141k left per agent for deep analysis
+✅ 17k × 5 = 85k extra tokens for intelligence
+```
+
+### 12.4 Implementation Phases
+
+**Phase 2.1: TOON Foundation (2-4 hours)**
+
+- Add `--format toon` flag to CLI commands
+- Implement TOON conversion in extractor module
+- Test with docker/toon-test/ container
+- Update storage for .toon file handling
+
+**Phase 2.2: Multi-Repo Sequential (4-6 hours)**
+
+- Add `compare` subcommand to CLI
+- Implement sequential repo analysis
+- Store intermediate summaries
+- Generate comparison report
+
+**Phase 2.3: Parallel Sub-Agents (6-8 hours)**
+
+- Add `--parallel` flag to compare command
+- Implement Task tool sub-agent launching
+- Handle parallel completion and aggregation
+- Validate results vs sequential mode
+
+**Phase 2.4: GitHub API Integration (4-6 hours)**
+
+- Add `extract-api` subcommand
+- Implement GitHub API client
+- Convert API responses to TOON
+- Store alongside repository files
+
+**Total Estimated Effort:** 16-24 hours across 4 phases
+
+### 12.5 Success Metrics
+
+**Token Efficiency:**
+
+- Target: 15-25% token savings on GitHub API data (already verified)
+- Measure: Compare JSON vs TOON token counts
+- Success: Consistent savings across 10+ repositories
+
+**Multi-Repo Capacity:**
+
+- Target: Analyze 5+ repositories in single session
+- Baseline: v1.0 can handle 1-2 repos
+- Success: 5 repos with deep analysis (not shallow summaries)
+
+**Performance:**
+
+- Parallel speedup: 3-5× faster than sequential
+- Success: Parallel takes ~1.2 × analysis_time (slight overhead acceptable)
+
+### 12.6 Architecture Preview
+
+**Integration Points in Current Architecture:**
+
+- **Extractor Module:** Add TOON conversion after GitIngest extraction
+- **Storage Module:** Support .toon file format alongside .txt
+- **Token Counter:** Account for TOON token savings in routing logic
+- **CLI Layer:** Add `compare` and `extract-api` commands
+
+**No Breaking Changes:**
+
+- Phase 1 functionality remains unchanged
+- TOON is opt-in via `--format` flag
+- Multi-repo comparison is new command (doesn't affect existing)
+- All Phase 1 tests continue to pass
+
+**External Dependencies:**
+
+- TOON CLI: `@toon-format/cli` (Node.js package, already tested)
+- Claude Code Task tool: For parallel sub-agent orchestration
+
+### 12.7 Next Steps
+
+**Before V2.0 Development:**
+
+1. ✅ **Feature Request Complete** - Comprehensive V2.0 specification documented
+2. ✅ **Validation Complete** - TOON testing verified with real data
+3. ✅ **Architecture Updated** - Integration points identified
+4. 🎯 **Story Creation Ready** - Use BMAD workflow to create V2.0 stories
+
+**BMAD V2.0 Workflow:**
+
+1. Use @sm to create V2.0 stories from feature request
+2. Let detailed docs evolve with implementation
+3. Iterate on architecture as needed
+4. Maintain test coverage (96%+ target)
+
+---
+
+## 13. Approval & Sign-off
 
 ### Document Status
 
-**Version:** 1.0
-**Phase:** Planning (PRD)
-**Scope:** Phase 1 - Core Clone Only
+**Version:** 1.1
+**Phase:** Phase 1 Complete ✅ | Phase 2.0 Proposed 📋
+**Scope:** Phase 1 (Complete) + Phase 2.0 Vision (Proposed)
 
 ### Next Steps
 
