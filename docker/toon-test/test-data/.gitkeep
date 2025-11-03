@@ -1,0 +1,2 @@
+# This file keeps the test-data directory in git
+# Actual test data files (*.json, *.toon) are gitignored

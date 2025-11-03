@@ -1,0 +1,9 @@
+# Test data files (downloaded at runtime)
+test-data/*.json
+test-data/*.toon
+
+# Results
+results/
+
+# Environment files
+.env
