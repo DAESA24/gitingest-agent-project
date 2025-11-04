@@ -1,10 +1,10 @@
 # GitIngest Agent - Product Requirements Document
 
-**Version:** 1.0 - Phase 1 (Core Clone)
-**Date:** 2025-09-29
-**Status:** Planning
-**Target Release:** Phase 1 MVP
-**Document Owner:** Product Manager
+- **Version:** 1.2
+- **Date:** 2025-11-03
+- **Status:** Phase 1.0 Complete ✅ | Phase 1.5 Planned 📋 | Phase 2.0 Proposed 📋
+- **Target Release:** Phase 1.5 (Next) / Phase 2.0 (Future)
+- **Document Owner:** Product Manager
 
 ---
 
@@ -906,10 +906,433 @@ These features are documented in the Requirements Addendum and planned for Phase
 
 **Phase 1.5 Requirements:** gitingest-agent-requirements-addendum-custom-enhancements.md
 - Multi-location output capability
-- BMAD project detection
+- Universal context folder standard
 - Cross-project usage patterns
 
-**Note:** Addendum features NOT included in Phase 1 PRD, but inform architecture design for future extensibility.
+**Note:** Addendum features integrated into Phase 1.5 (Section 11.5 below) with simplified universal approach (no project-type detection needed).
+
+---
+
+## 11.5 Phase 1.5: Multi-Location Output
+
+### 11.5.1 Overview
+
+**Status:** 📋 Planned (Post Phase 1.0)
+
+Phase 1.5 extends GitIngest Agent with **universal multi-location output capability**, enabling the tool to save analysis outputs to any directory, not just gitingest-agent-project. This enhancement makes GitIngest Agent universally useful across all project types and workflows.
+
+**Problem Statement:**
+
+Phase 1.0 design saves extractions and analyses exclusively to:
+- `gitingest-agent-project/data/` - Repository extractions
+- `gitingest-agent-project/analyze/` - Analysis outputs
+
+This limits utility to analyzing repositories for the GitIngest Agent project itself. To use analyses in another project, users must manually copy files between directories.
+
+**Real-World Requirement:**
+
+Users work across diverse project types:
+- Software development (React apps, Python tools, BMAD projects)
+- Knowledge management (Research, writing, Obsidian vaults)
+- Learning and exploration (Tutorials, experiments, comparisons)
+- Ad-hoc analysis (Temporary directories, quick investigations)
+
+Each project needs analyzed repositories available as **local context** without manual file management.
+
+**Value Proposition:**
+
+- **Work from anywhere** - Analyze repos from any directory
+- **Context where needed** - Analyses saved in the current project automatically
+- **Universal standard** - `context/related-repos/` works everywhere (no configuration)
+- **Zero manual file copying** - Tool handles everything automatically
+- **One convention to learn** - Same structure across all project types
+- **Backward compatible** - Phase 1.0 behavior preserved in gitingest-agent-project
+
+**Example Scenario:**
+
+```
+Working on: react-component-test-project
+Need to understand: React 19 new features
+Want to analyze: https://github.com/facebook/react
+
+Desired outcome:
+→ Analysis saved to: react-component-test-project/context/related-repos/react-analysis.md
+→ Available as context when working in that project
+→ No directory switching or file copying required
+```
+
+### 11.5.2 User Stories
+
+**User Story 11.5.1: Analyze Repo from Any Directory**
+
+As a developer working in any project directory,
+I want to analyze a related repository and save the analysis in my current directory's context folder,
+So that the analysis is available as project context without switching directories or copying files.
+
+**Acceptance Criteria:**
+- [ ] GitIngest Agent works from ANY directory (not just BMAD projects)
+- [ ] Automatically creates `context/related-repos/` in current directory if missing
+- [ ] Saves analysis to `context/related-repos/<repo-name>-<analysis-type>.md`
+- [ ] Analysis file includes metadata: analyzed date, token count, source repo
+- [ ] Can run multiple analyses - each saves to separate file
+- [ ] Universal convention works across software projects, knowledge projects, and ad-hoc directories
+
+---
+
+**User Story 11.5.2: Analyze Repo for GitIngest Agent Project**
+
+As a developer improving the GitIngest Agent,
+I want to analyze repositories related to the agent itself (Click, GitIngest, etc.),
+So that I can reference implementation patterns while building the tool.
+
+**Acceptance Criteria:**
+- [ ] When in gitingest-agent-project directory, default behavior is Phase 1.0 spec
+- [ ] Saves to `data/` and `analyze/` folders as designed
+- [ ] No change to original workflow
+- [ ] Phase 1.0 regression tests all pass
+
+---
+
+**User Story 11.5.3: Custom Output Location**
+
+As a developer with specific organizational needs,
+I want to specify exactly where analysis should be saved,
+So that I have full control over file organization.
+
+**Acceptance Criteria:**
+- [ ] Can provide `--output-dir` parameter to CLI commands
+- [ ] Agent validates path exists or asks to create it
+- [ ] Saves analysis to specified location
+- [ ] Works from any directory
+
+---
+
+**User Story 11.5.4: Universal Context Folder Standard**
+
+As a developer managing multiple projects,
+I want a consistent `context/related-repos/` folder structure across all my projects,
+So that I always know where to find repository analysis regardless of project type.
+
+**Acceptance Criteria:**
+- [ ] Any project can have a `context/` folder (created automatically)
+- [ ] `context/related-repos/` becomes universal standard for GitIngest analyses
+- [ ] Works consistently across software projects, knowledge projects, and ad-hoc directories
+- [ ] Folder structure documented in project README
+- [ ] One convention to learn, works everywhere
+
+### 11.5.3 Scope: What Phase 1.5 Changes (and What It Doesn't)
+
+**IMPORTANT CLARIFICATION:**
+
+Phase 1.5 is **ONLY** about changing where analysis files are saved. All Phase 1.0 workflow behavior remains completely unchanged.
+
+**What Phase 1.5 Changes:**
+
+- ✅ **Storage location detection** - Where to save output files
+- ✅ **Folder creation** - Auto-create `context/related-repos/` if needed
+- ✅ **File naming** - Adapt naming convention based on location
+- ✅ **CLI parameter** - Add `--output-dir` option
+
+**What Phase 1.5 Does NOT Change:**
+
+- ❌ **Token size checking** - Still automatic, still uses 200k threshold
+- ❌ **Workflow routing** - Still routes to full vs selective based on token count
+- ❌ **Content selection** - For large repos, still prompts user for content type (docs/installation/code/auto)
+- ❌ **Analysis type selection** - **ALWAYS prompts: "What type of analysis would you like?"** (installation/workflow/architecture/custom)
+- ❌ **Analysis generation** - Same quality and depth regardless of directory
+- ❌ **Extraction process** - GitIngest wrapping unchanged
+
+**Critical User Experience Guarantee:**
+
+Whether you run GitIngest Agent from:
+- `gitingest-agent-project` directory
+- Another BMAD project
+- Any arbitrary directory
+- With `--output-dir` parameter
+
+**You will ALWAYS get:**
+1. Token size check → routing decision
+2. Full or selective extraction (based on size)
+3. **"What type of analysis would you like?"** prompt ← UNIVERSAL
+4. Claude Code analyzes with selected focus
+5. Storage location prompt (Phase 1.5 addition)
+6. Analysis saved to appropriate location
+
+**The only difference is WHERE the analysis is saved at the end, not HOW it's generated.**
+
+### 11.5.4 Technical Requirements
+
+**TR6: Storage Location Abstraction**
+
+**Current Architecture (Phase 1.0):**
+```python
+# Hardcoded paths
+DATA_DIR = "data/"
+ANALYZE_DIR = "analyze/"
+
+def save_extraction(content, repo_name):
+    path = f"{DATA_DIR}{repo_name}/digest.txt"
+    save_file(path, content)
+```
+
+**Enhanced Architecture (Phase 1.5):**
+```python
+# Flexible path resolution - SIMPLIFIED UNIVERSAL APPROACH
+class StorageManager:
+    def __init__(self, output_dir=None):
+        self.output_dir = output_dir or self._detect_output_location()
+
+    def _detect_output_location(self):
+        """Detect appropriate save location based on context"""
+        cwd = Path.cwd()
+
+        # Exception: If in gitingest-agent-project itself
+        if cwd.name == "gitingest-agent-project":
+            return cwd  # Use Phase 1.0 default structure (data/, analyze/)
+
+        # Universal default: context/related-repos/ for ALL other directories
+        context_dir = cwd / "context" / "related-repos"
+
+        # Auto-create if doesn't exist
+        if not context_dir.exists():
+            print(f"Creating context/related-repos/ in current directory...")
+            context_dir.mkdir(parents=True, exist_ok=True)
+
+        return context_dir
+```
+
+**Key Technical Changes:**
+
+- **StorageManager Class** - Abstraction layer for path resolution
+- **Universal Default** - `./context/related-repos/` for ANY directory (except gitingest-agent-project)
+- **No Project Detection** - No `.bmad-core/` checking needed (simpler logic)
+- **Auto-Create Context Folder** - Always creates `context/related-repos/` if missing
+- **Backward Compatibility** - Phase 1.0 behavior preserved ONLY in gitingest-agent-project
+- **CLI Parameter** - `--output-dir` option for manual override always available
+
+**Design Rationale:**
+
+This simplified approach makes `context/related-repos/` a **universal best practice** across:
+- BMAD projects (software development)
+- Knowledge projects (research, writing)
+- Personal projects (any use case)
+- Ad-hoc directories (temporary analysis)
+
+One convention, zero configuration, consistent everywhere.
+
+**File Naming Conventions:**
+
+**In gitingest-agent-project (Phase 1.0 behavior):**
+```
+analyze/
+  installation/
+    react.md
+    fastapi.md
+  workflow/
+    react.md
+  architecture/
+    react.md
+```
+
+**In other BMAD projects (Phase 1.5 behavior):**
+```
+context/
+  related-repos/
+    react-installation.md          # Repo + analysis type
+    react-architecture.md
+    fastapi-workflow.md
+    testing-library-overview.md
+```
+
+**Rationale:** GitIngest Agent project needs multiple analysis types organized by type. Other projects typically have 1-2 analyses per repo, so flat structure with descriptive names is more practical.
+
+**Context Folder Standard:**
+
+Proposed universal structure for ALL projects:
+```
+[Any Project Directory]/
+├── context/                 # Universal context folder (auto-created)
+│   ├── related-repos/      # GitIngest analyses (auto-created)
+│   │   ├── [repo1]-[type].md
+│   │   └── [repo2]-[type].md
+│   ├── research/           # Other research materials (optional)
+│   └── references/         # Documentation, specs, etc. (optional)
+├── [your project files]
+└── [your project structure]
+```
+
+**Universal Applicability:**
+
+This structure works for:
+- **Software projects** (BMAD, React, Python, etc.)
+- **Knowledge projects** (Research, writing, Obsidian vaults)
+- **Personal projects** (Learning, experiments, tutorials)
+- **Ad-hoc directories** (Temporary analysis, comparisons)
+
+**Benefits:**
+- **Universal convention** - Same structure everywhere
+- **Zero configuration** - Auto-creates on first use
+- **One habit to learn** - Always check `context/related-repos/`
+- **Extensible** - Can add other context subdirectories as needed
+- **Predictable** - No project type detection required
+
+### 11.5.4 Implementation Phases
+
+Phase 1.5 implementation is estimated at **1-2 hours total** and breaks down into focused increments:
+
+**Phase 1.5.1: Refactor Storage Layer (30 min)**
+
+- Extract hardcoded paths to StorageManager class
+- Add path detection logic
+- Maintain Phase 1.0 behavior when in gitingest-agent-project
+- Test Phase 1.0 regression (no behavior change yet)
+
+**Phase 1.5.2: Add CLAUDE.md Location Detection (15 min)**
+
+- Add storage location step to CLAUDE.md workflow
+- Universal default: `./context/related-repos/` for all non-gitingest-agent-project directories
+- No project type detection needed (simpler logic)
+- Test folder creation and save workflow
+
+**Phase 1.5.3: Implement CLI Parameter (15 min)**
+
+- Add `--output-dir` option to CLI commands
+- Wire parameter to StorageManager
+- Test manual override functionality
+- Validate path handling (relative/absolute)
+
+**Phase 1.5.4: Add Context Folder Creation (10 min)**
+
+- Auto-create `context/related-repos/` if needed
+- Handle permissions errors gracefully
+- Add user confirmation before creation
+- Test folder creation on multiple projects
+
+**Phase 1.5.5: Testing (20 min)**
+
+- Test from gitingest-agent-project (Phase 1.0 regression)
+- Test from software development project
+- Test from knowledge management directory
+- Test from arbitrary/temporary directory
+- Test with `--output-dir` parameter
+- Validate all acceptance criteria
+
+**Total Implementation Time:** 1 hour 30 minutes
+
+**Time Savings:** Simpler logic (no BMAD detection) reduces implementation and testing time by ~10 minutes.
+
+**Prerequisites:**
+- Phase 1.0 complete and tested ✅
+- No new external dependencies required
+- No blockers identified
+
+### 11.5.6 Success Metrics
+
+**Functional Success Criteria:**
+
+- [ ] All Phase 1.0 tests still pass (backward compatible)
+- [ ] Tool works from ANY directory (software, knowledge, ad-hoc)
+- [ ] Context folder created automatically in current directory
+- [ ] Analysis saved to `./context/related-repos/` universally
+- [ ] `--output-dir` parameter functions correctly
+- [ ] Can switch between different project types seamlessly
+
+**User Acceptance Criteria:**
+
+- [ ] User can analyze repos while working in any directory
+- [ ] Analysis available as local context automatically
+- [ ] No manual file copying or configuration required
+- [ ] Consistent experience across all project types
+- [ ] Tool "just works" - zero learning curve for location behavior
+- [ ] Universal convention (`context/related-repos/`) becomes habit
+
+**Quality Metrics:**
+
+- [ ] 100% Phase 1.0 regression test pass rate
+- [ ] 95%+ test coverage on StorageManager module
+- [ ] Zero breaking changes to existing Phase 1.0 API
+- [ ] Error handling covers all location detection scenarios
+- [ ] User prompts are clear and actionable
+
+### 11.5.6 Dependencies and Prerequisites
+
+**Prerequisites:**
+
+- **Phase 1.0 Complete:** ✅ All core functionality implemented and tested
+- **Python 3.12+:** Already established in Phase 1.0
+- **Click Framework:** Supports `--output-dir` option pattern
+- **UV Package Manager:** No changes needed
+
+**External Dependencies:**
+
+- **None** - Phase 1.5 uses only Python standard library features (Path, os)
+- No additional packages required in pyproject.toml
+
+**Blockers:**
+
+- **None identified** - Can implement immediately after Phase 1.0
+
+**Architecture Dependencies:**
+
+- Phase 1.5 builds on storage layer from Phase 1.0
+- CLAUDE.md workflow extensions are additive (no conflicts)
+- CLI commands extended, not replaced
+
+### 11.5.7 Risks and Mitigations
+
+**Risk 1: Path Detection Logic Fails**
+
+- **Probability:** Low
+- **Impact:** Medium (falls back to Phase 1.0 behavior)
+- **Mitigation:**
+  - Thorough testing across directory structures
+  - Clear error messages if detection fails
+  - Fail-safe default to Phase 1.0 behavior
+  - Manual override via `--output-dir` always available
+
+**Risk 2: CLAUDE.md Prompts Confusing**
+
+- **Probability:** Medium (prompt refinement always needed)
+- **Impact:** Low (usability issue, not functional)
+- **Mitigation:**
+  - Manual testing with real scenarios
+  - Iterative prompt refinement
+  - Clear examples in prompts
+  - User can always specify `--output-dir` to bypass prompts
+
+**Risk 3: Phase 1.5 Breaks Phase 1.0 Functionality**
+
+- **Probability:** Low (isolated refactor)
+- **Impact:** High (regression)
+- **Mitigation:**
+  - Comprehensive Phase 1.0 regression tests run first
+  - Test Phase 1.0 behavior before adding Phase 1.5 features
+  - Easy rollback strategy (revert storage.py changes)
+  - Refactor validation step before enhancement
+
+**Risk 4: Cross-Project File Conflicts**
+
+- **Probability:** Very Low
+- **Impact:** Low (file overwrite)
+- **Mitigation:**
+  - Timestamp-based naming if needed
+  - Warn before overwriting existing files
+  - Document naming conventions clearly
+  - Analysis type in filename prevents most conflicts
+
+**Risk 5: Phase 1.0 Exceeds Time Estimate (Blocking Phase 1.5)**
+
+- **Probability:** Medium (common in development)
+- **Impact:** Low (defer Phase 1.5)
+- **Mitigation:**
+  - Phase 1.5 explicitly optional
+  - Can ship Phase 1.0 as complete product
+  - Phase 1.5 can be added later as v1.1 update
+  - No technical debt from deferring Phase 1.5
+
+**Overall Risk Assessment:** **Low Risk, High Value**
+
+Phase 1.5 is an isolated enhancement to the storage layer with clear rollback path and significant user value. The 1-2 hour implementation window and comprehensive testing strategy make this a low-risk, high-reward enhancement.
 
 ---
 
@@ -1041,14 +1464,139 @@ With TOON + Sub-Agents:
 - TOON CLI: `@toon-format/cli` (Node.js package, already tested)
 - Claude Code Task tool: For parallel sub-agent orchestration
 
-### 12.7 Next Steps
+### 12.7 Critical Challenge: CLAUDE.md Context Overhead
+
+**Problem Identified:**
+
+As of Phase 1.0, CLAUDE.md already consumes **3,200 tokens** on load (before any work begins). Phase 2.0's multi-repo workflows will significantly increase this overhead, potentially consuming **5,000-7,000 tokens** for comprehensive workflow instructions.
+
+**Impact:**
+
+- **Context Window Pressure:** 3.2k tokens = ~1.6% of 200k context consumed immediately
+- **Scalability Concern:** Multi-repo workflows require even more detailed instructions
+- **User Experience:** Large upfront context load before any productive work
+- **Maintenance Burden:** Large CLAUDE.md files are harder to maintain and test
+
+**Root Cause:**
+
+Current architecture loads ALL workflow instructions upfront, including:
+- Detailed step-by-step workflow logic (9 steps × ~200 tokens each)
+- Error handling instructions for each step
+- Prompt templates and examples
+- Decision tree logic for routing
+- Progress display formatting
+- All instructions needed regardless of which workflow path is taken
+
+**Proposed Solutions for V2.0:**
+
+**Solution 1: Slash Command Offloading**
+
+Move workflow steps into custom slash commands that are invoked on-demand:
+
+```
+Current (Phase 1.0):
+CLAUDE.md: Contains all 9 workflow steps inline (~3200 tokens)
+
+Proposed (Phase 2.0):
+CLAUDE.md: High-level workflow trigger (~500 tokens)
+/.bmad-core/commands/gitingest-extract-full.md: Full extraction workflow (~400 tokens)
+/.bmad-core/commands/gitingest-extract-selective.md: Selective workflow (~600 tokens)
+/.bmad-core/commands/gitingest-analyze.md: Analysis generation (~400 tokens)
+```
+
+**Benefits:**
+- CLAUDE.md reduced to ~500 tokens (84% reduction)
+- Workflow details loaded only when needed
+- Each command tested independently
+- Easier to maintain and update individual workflows
+
+**Limitations:**
+- Requires Claude Code to support context passing between slash commands
+- May need state management between command invocations
+
+**Solution 2: Skills-Based Workflow (Experimental)**
+
+Package workflow steps as custom skills:
+
+```
+Skills:
+- @gitingest-agent/extract: Handle extraction workflows
+- @gitingest-agent/analyze: Handle analysis generation
+- @gitingest-agent/storage: Handle save location logic
+```
+
+**Benefits:**
+- Complete encapsulation of workflow logic
+- Reusable across projects
+- No context overhead until invoked
+
+**Limitations:**
+- ⚠️ **Known Issue:** Skills processor tool currently has issues in VS Code
+- May not be viable until Claude Code skill support improves
+- Less flexible than inline CLAUDE.md instructions
+
+**Solution 3: Lazy-Load Workflow Sections**
+
+Structure CLAUDE.md as a dispatcher that loads detailed instructions on-demand:
+
+```markdown
+# CLAUDE.md (Minimal Dispatcher - ~500 tokens)
+
+When user provides GitHub URL:
+1. Trigger token size check
+2. Based on result, load appropriate workflow:
+   - IF < 200k: Read .claude/workflows/full-extraction.md
+   - IF >= 200k: Read .claude/workflows/selective-extraction.md
+3. Execute loaded workflow
+```
+
+**Benefits:**
+- Backward compatible with current Claude Code
+- No dependency on new features
+- Clear separation of concerns
+
+**Limitations:**
+- Requires explicit file reads during workflow
+- Slightly more complex flow control
+
+**Recommended Approach for V2.0:**
+
+**Phase 2.1:** Implement Solution 3 (Lazy-Load) as immediate improvement
+- Reduce CLAUDE.md to ~500-800 tokens
+- Move detailed workflows to `.claude/workflows/` directory
+- Maintain full functionality while reducing context overhead
+
+**Phase 2.2:** Evaluate Solution 1 (Slash Commands) if feasible
+- Requires testing Claude Code's slash command context handling
+- Potentially even cleaner architecture
+- May require BMAD framework updates
+
+**Phase 2.3:** Monitor Solution 2 (Skills) for future consideration
+- Wait for VS Code skill support improvements
+- Could be ultimate solution for workflow encapsulation
+- Would benefit entire BMAD ecosystem
+
+**Success Metrics:**
+
+- [ ] CLAUDE.md token count < 1,000 tokens (from current 3,200)
+- [ ] Workflow instructions loaded on-demand, not upfront
+- [ ] No regression in workflow functionality
+- [ ] Easier maintenance and testing of individual workflow steps
+- [ ] Pattern reusable across other BMAD projects facing same issue
+
+**V2.0 Implementation Consideration:**
+
+This should be addressed **before** adding multi-repo complexity. Starting V2.0 with current CLAUDE.md architecture will make the problem worse. Recommend implementing Solution 3 (Lazy-Load) as **Phase 2.0.5** (between current 2.1 and 2.2).
+
+### 12.8 Next Steps
 
 **Before V2.0 Development:**
 
 1. ✅ **Feature Request Complete** - Comprehensive V2.0 specification documented
 2. ✅ **Validation Complete** - TOON testing verified with real data
 3. ✅ **Architecture Updated** - Integration points identified
-4. 🎯 **Story Creation Ready** - Use BMAD workflow to create V2.0 stories
+4. 🎯 **CLAUDE.md Optimization** - Address context overhead (Section 12.7)
+5. 🎯 **Story Creation Ready** - Use BMAD workflow to create V2.0 stories
 
 **BMAD V2.0 Workflow:**
 
@@ -1056,6 +1604,7 @@ With TOON + Sub-Agents:
 2. Let detailed docs evolve with implementation
 3. Iterate on architecture as needed
 4. Maintain test coverage (96%+ target)
+5. **New:** Implement CLAUDE.md optimization before scaling to multi-repo
 
 ---
 
@@ -1063,9 +1612,10 @@ With TOON + Sub-Agents:
 
 ### Document Status
 
-**Version:** 1.1
-**Phase:** Phase 1 Complete ✅ | Phase 2.0 Proposed 📋
-**Scope:** Phase 1 (Complete) + Phase 2.0 Vision (Proposed)
+- **Version:** 1.2
+- **Phase:** Phase 1.0 Complete ✅ | Phase 1.5 Planned 📋 | Phase 2.0 Proposed 📋
+- **Scope:** Phase 1.0 (Complete) + Phase 1.5 (Planned) + Phase 2.0 Vision (Proposed)
+- **Last Updated:** 2025-11-03
 
 ### Next Steps
 
