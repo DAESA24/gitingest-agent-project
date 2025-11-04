@@ -1,9 +1,10 @@
 # GitIngest Agent - Product Requirements Document
 
-- **Version:** 1.2
-- **Date:** 2025-11-03
-- **Status:** Phase 1.0 Complete ✅ | Phase 1.5 Planned 📋 | Phase 2.0 Proposed 📋
-- **Target Release:** Phase 1.5 (Next) / Phase 2.0 (Future)
+- **Version:** 1.3
+- **Date:** 2025-11-04
+- **Status:** v1.0.0 Complete ✅ | v1.1.0 Complete ✅ | v2.0.0 Proposed 📋
+- **Current Release:** v1.1.0 (Multi-Location Output)
+- **Next Release:** v2.0.0 (TOON Format + Multi-Agent Architecture)
 - **Document Owner:** Product Manager
 
 ---
@@ -913,13 +914,13 @@ These features are documented in the Requirements Addendum and planned for Phase
 
 ---
 
-## 11.5 Phase 1.5: Multi-Location Output
+## 11.5 v1.1.0 Release: Multi-Location Output
 
 ### 11.5.1 Overview
 
-**Status:** 📋 Planned (Post Phase 1.0)
+**Status:** ✅ Complete (Released 2025-11-04)
 
-Phase 1.5 extends GitIngest Agent with **universal multi-location output capability**, enabling the tool to save analysis outputs to any directory, not just gitingest-agent-project. This enhancement makes GitIngest Agent universally useful across all project types and workflows.
+Version 1.1.0 extends GitIngest Agent with **universal multi-location output capability**, enabling the tool to save analysis outputs to any directory, not just gitingest-agent-project. This enhancement makes GitIngest Agent universally useful across all project types and workflows.
 
 **Problem Statement:**
 
@@ -1336,15 +1337,15 @@ Phase 1.5 is an isolated enhancement to the storage layer with clear rollback pa
 
 ---
 
-## 12. Phase 2.0 Vision
+## 12. v2.0.0 Roadmap
 
 ### 12.1 Overview
 
-**Status:** ✅ Phase 1 Complete | 📋 Phase 2.0 Proposed
+**Status:** ✅ v1.0.0 Complete | ✅ v1.1.0 Complete | 📋 v2.0.0 Proposed
 
 **📋 For Complete V2.0 Specification:** See [prd-v2.0-roadmap.md](prd-v2.0-roadmap.md)
 
-Phase 2.0 extends GitIngest Agent with three major enhancements:
+Version 2.0.0 will extend GitIngest Agent with three major enhancements:
 
 1. **Context-Efficient Agent Architecture** - Reduce CLAUDE.md overhead from 3.2k → 300 tokens (90% reduction)
 2. **TOON Format Integration** - Token-Oriented Object Notation for 15-25% token reduction on GitHub API data
@@ -1527,10 +1528,10 @@ Move workflow orchestration from documentation to executable code using progress
 
 ### Document Status
 
-- **Version:** 1.2
-- **Phase:** Phase 1.0 Complete ✅ | Phase 1.5 Planned 📋 | Phase 2.0 Proposed 📋
-- **Scope:** Phase 1.0 (Complete) + Phase 1.5 (Planned) + Phase 2.0 Vision (Proposed)
-- **Last Updated:** 2025-11-03
+- **Version:** 1.3
+- **Product Version:** v1.0.0 Complete ✅ | v1.1.0 Complete ✅ | v2.0.0 Proposed 📋
+- **Scope:** v1.0.0 (Released) + v1.1.0 (Released) + v2.0.0 Roadmap (Proposed)
+- **Last Updated:** 2025-11-04
 
 ### Next Steps
 
@@ -1552,4 +1553,4 @@ This PRD represents a **high-fidelity clone** of the video creator's proven desi
 
 **Document End**
 
-*This PRD defines Phase 1 requirements exclusively. Phase 1.5 enhancements (multi-location output) documented separately in Requirements Addendum and implemented after Phase 1 completion and validation.*
+*This PRD documents v1.0.0 (Core Clone) and v1.1.0 (Multi-Location Output) releases, both complete as of 2025-11-04. Version 2.0.0 roadmap is proposed for future development.*
