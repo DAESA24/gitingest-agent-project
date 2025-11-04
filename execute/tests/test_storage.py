@@ -100,7 +100,9 @@ class TestEnsureDataDirectory:
         assert data_dir.exists()
         assert data_dir.is_dir()
         assert data_dir.name == "test-repo"
-        assert data_dir.parent.name == "data"
+        # Phase 1.5: context/related-repos/[repo]/ structure
+        assert data_dir.parent.name == "related-repos"
+        assert data_dir.parent.parent.name == "context"
 
     def test_ensure_data_directory_returns_absolute(self, tmp_path, monkeypatch):
         """Test absolute path is returned."""
@@ -297,8 +299,8 @@ class TestIntegration:
         assert data_dir.exists()
         assert analyze_dir.exists()
 
-        # Verify structure
-        assert (tmp_path / "data" / "fastapi").exists()
+        # Verify structure (Phase 1.5: context/related-repos/)
+        assert (tmp_path / "context" / "related-repos" / "fastapi").exists()
         assert (tmp_path / "analyze" / "installation").exists()
 
     def test_multiple_repos_multiple_analyses(self, tmp_path, monkeypatch):

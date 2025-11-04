@@ -104,14 +104,20 @@ def ensure_data_directory(repo_name: str, output_dir: Optional[Path] = None) -> 
     try:
         # Use CWD as base location (for test compatibility and Phase 1.5)
         if output_dir is None:
-            # Check if we're in gitingest-agent-project (has execute/cli.py marker)
+            # Check if we're in gitingest-agent-project
             cwd = Path.cwd()
-            if (cwd / "execute" / "cli.py").exists() and (cwd / "execute" / "main.py").exists():
-                # Phase 1.0: data/[repo]/
-                data_dir = cwd / "data" / repo_name
+            # Case 1: CWD is project root (has execute/cli.py)
+            # Case 2: CWD is execute/ directory itself (has cli.py directly)
+            is_project_root = (cwd / "execute" / "cli.py").exists() and (cwd / "execute" / "main.py").exists()
+            is_execute_dir = (cwd / "cli.py").exists() and (cwd / "main.py").exists() and cwd.name == "execute"
+
+            if is_project_root or is_execute_dir:
+                # Phase 1.0: data/[repo]/ (resolve to project root if in execute/)
+                base = cwd if is_project_root else cwd.parent
+                data_dir = base / "data" / repo_name
             else:
-                # Not in project, use simple data/ structure for backward compat with tests
-                data_dir = cwd / "data" / repo_name
+                # Phase 1.5: context/related-repos/[repo]/ (universal convention)
+                data_dir = cwd / "context" / "related-repos" / repo_name
         else:
             # Custom output_dir provided - use StorageManager
             manager = StorageManager(output_dir=output_dir)
