@@ -1342,16 +1342,27 @@ Phase 1.5 is an isolated enhancement to the storage layer with clear rollback pa
 
 **Status:** ✅ Phase 1 Complete | 📋 Phase 2.0 Proposed
 
-Phase 2.0 extends GitIngest Agent to enable **multi-repository analysis** through TOON format integration and multi-agent architecture. This represents a significant evolution from single-repo analysis to comparative analysis across multiple codebases.
+**📋 For Complete V2.0 Specification:** See [prd-v2.0-roadmap.md](prd-v2.0-roadmap.md)
+
+Phase 2.0 extends GitIngest Agent with three major enhancements:
+
+1. **Context-Efficient Agent Architecture** - Reduce CLAUDE.md overhead from 3.2k → 300 tokens (90% reduction)
+2. **TOON Format Integration** - Token-Oriented Object Notation for 15-25% token reduction on GitHub API data
+3. **Multi-Agent Architecture** - Parallel repository processing with sub-agent orchestration
 
 **Key Features:**
 
-- **TOON Format Integration** - Token-Oriented Object Notation for 15-25% token reduction on GitHub API data
-- **Multi-Agent Architecture** - Parallel repository processing with sub-agent orchestration
+- **Progressive Disclosure** - Move workflow orchestration from documentation to executable code
+- **CLI Analyze Command** - `gitingest-agent analyze <url>` handles full workflow automatically
+- **Plugin Architecture** - Extensible analysis types without modifying core code
+- **TOON Output Format** - `--format toon` for optimized token usage
 - **Multi-Repo Comparison** - Synthesized analysis workflows (e.g., "Compare FastAPI, Flask, Django")
 - **GitHub API Integration** - Commit history, issues, PRs with TOON optimization
 
-**Detailed Specification:** See [user-context/v2-toon-multiagent-feature-request.md](../user-context/v2-toon-multiagent-feature-request.md)
+**Detailed Specifications:**
+
+- **V2.0 Roadmap:** [prd-v2.0-roadmap.md](prd-v2.0-roadmap.md) - Complete feature specs and user stories
+- **TOON Feature Request:** [user-context/v2-toon-multiagent-feature-request.md](../user-context/v2-toon-multiagent-feature-request.md) - Original proposal
 
 ### 12.2 Validation Completed
 
@@ -1464,129 +1475,33 @@ With TOON + Sub-Agents:
 - TOON CLI: `@toon-format/cli` (Node.js package, already tested)
 - Claude Code Task tool: For parallel sub-agent orchestration
 
-### 12.7 Critical Challenge: CLAUDE.md Context Overhead
+### 12.7 Context-Efficient Architecture (Priority Enhancement)
 
-**Problem Identified:**
+**Problem:**
 
-As of Phase 1.0, CLAUDE.md already consumes **3,200 tokens** on load (before any work begins). Phase 2.0's multi-repo workflows will significantly increase this overhead, potentially consuming **5,000-7,000 tokens** for comprehensive workflow instructions.
+CLAUDE.md currently consumes **3,200 tokens** on every session load, regardless of whether repository analysis is occurring. This represents ~1.6% of the 200k context window consumed before any productive work begins.
 
-**Impact:**
+**Proposed Solution:**
 
-- **Context Window Pressure:** 3.2k tokens = ~1.6% of 200k context consumed immediately
-- **Scalability Concern:** Multi-repo workflows require even more detailed instructions
-- **User Experience:** Large upfront context load before any productive work
-- **Maintenance Burden:** Large CLAUDE.md files are harder to maintain and test
+Move workflow orchestration from documentation to executable code using progressive disclosure. This architectural shift is detailed in **Section 2.1** of the [V2.0 Roadmap](prd-v2.0-roadmap.md).
 
-**Root Cause:**
+**Key Approach:**
 
-Current architecture loads ALL workflow instructions upfront, including:
-- Detailed step-by-step workflow logic (9 steps × ~200 tokens each)
-- Error handling instructions for each step
-- Prompt templates and examples
-- Decision tree logic for routing
-- Progress display formatting
-- All instructions needed regardless of which workflow path is taken
-
-**Proposed Solutions for V2.0:**
-
-**Solution 1: Slash Command Offloading**
-
-Move workflow steps into custom slash commands that are invoked on-demand:
-
-```
-Current (Phase 1.0):
-CLAUDE.md: Contains all 9 workflow steps inline (~3200 tokens)
-
-Proposed (Phase 2.0):
-CLAUDE.md: High-level workflow trigger (~500 tokens)
-/.bmad-core/commands/gitingest-extract-full.md: Full extraction workflow (~400 tokens)
-/.bmad-core/commands/gitingest-extract-selective.md: Selective workflow (~600 tokens)
-/.bmad-core/commands/gitingest-analyze.md: Analysis generation (~400 tokens)
-```
+- **CLI Orchestration:** Create `gitingest-agent analyze <url>` command that handles full workflow internally
+- **Minimal CLAUDE.md:** Reduce to ~300 tokens (90% reduction) - just URL detection and command execution
+- **On-Demand Help:** Optional `/analyze-help` slash command for detailed docs (loaded only when requested)
+- **Plugin Foundation:** Extensibility without modifying core instructions
 
 **Benefits:**
-- CLAUDE.md reduced to ~500 tokens (84% reduction)
-- Workflow details loaded only when needed
-- Each command tested independently
-- Easier to maintain and update individual workflows
 
-**Limitations:**
-- Requires Claude Code to support context passing between slash commands
-- May need state management between command invocations
+- 90% context reduction (3.2k → 300 tokens when idle)
+- Testable workflow logic (code vs. documentation)
+- Direct CLI usage (CI/CD integration, scripting)
+- Foundation for plugin architecture
 
-**Solution 2: Skills-Based Workflow (Experimental)**
+**Priority:** This should be implemented **before** multi-repo/TOON features to prevent further context bloat.
 
-Package workflow steps as custom skills:
-
-```
-Skills:
-- @gitingest-agent/extract: Handle extraction workflows
-- @gitingest-agent/analyze: Handle analysis generation
-- @gitingest-agent/storage: Handle save location logic
-```
-
-**Benefits:**
-- Complete encapsulation of workflow logic
-- Reusable across projects
-- No context overhead until invoked
-
-**Limitations:**
-- ⚠️ **Known Issue:** Skills processor tool currently has issues in VS Code
-- May not be viable until Claude Code skill support improves
-- Less flexible than inline CLAUDE.md instructions
-
-**Solution 3: Lazy-Load Workflow Sections**
-
-Structure CLAUDE.md as a dispatcher that loads detailed instructions on-demand:
-
-```markdown
-# CLAUDE.md (Minimal Dispatcher - ~500 tokens)
-
-When user provides GitHub URL:
-1. Trigger token size check
-2. Based on result, load appropriate workflow:
-   - IF < 200k: Read .claude/workflows/full-extraction.md
-   - IF >= 200k: Read .claude/workflows/selective-extraction.md
-3. Execute loaded workflow
-```
-
-**Benefits:**
-- Backward compatible with current Claude Code
-- No dependency on new features
-- Clear separation of concerns
-
-**Limitations:**
-- Requires explicit file reads during workflow
-- Slightly more complex flow control
-
-**Recommended Approach for V2.0:**
-
-**Phase 2.1:** Implement Solution 3 (Lazy-Load) as immediate improvement
-- Reduce CLAUDE.md to ~500-800 tokens
-- Move detailed workflows to `.claude/workflows/` directory
-- Maintain full functionality while reducing context overhead
-
-**Phase 2.2:** Evaluate Solution 1 (Slash Commands) if feasible
-- Requires testing Claude Code's slash command context handling
-- Potentially even cleaner architecture
-- May require BMAD framework updates
-
-**Phase 2.3:** Monitor Solution 2 (Skills) for future consideration
-- Wait for VS Code skill support improvements
-- Could be ultimate solution for workflow encapsulation
-- Would benefit entire BMAD ecosystem
-
-**Success Metrics:**
-
-- [ ] CLAUDE.md token count < 1,000 tokens (from current 3,200)
-- [ ] Workflow instructions loaded on-demand, not upfront
-- [ ] No regression in workflow functionality
-- [ ] Easier maintenance and testing of individual workflow steps
-- [ ] Pattern reusable across other BMAD projects facing same issue
-
-**V2.0 Implementation Consideration:**
-
-This should be addressed **before** adding multi-repo complexity. Starting V2.0 with current CLAUDE.md architecture will make the problem worse. Recommend implementing Solution 3 (Lazy-Load) as **Phase 2.0.5** (between current 2.1 and 2.2).
+**Full Specification:** See [prd-v2.0-roadmap.md - Section 2.1](prd-v2.0-roadmap.md#21-context-efficient-agent-architecture)
 
 ### 12.8 Next Steps
 
