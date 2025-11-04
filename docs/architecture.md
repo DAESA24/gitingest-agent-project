@@ -1159,24 +1159,30 @@ def extract_full(url, output_dir):
 ### 12.1 Architecture Quality Gates
 
 **Modularity:**
-- [ ] Each module has single clear responsibility
-- [ ] Modules can be tested independently
-- [ ] Dependencies flow in one direction (CLI → Core → GitIngest)
+- [x] Each module has single clear responsibility
+- [x] Modules can be tested independently
+- [x] Dependencies flow in one direction (CLI → Core → GitIngest)
 
 **Maintainability:**
-- [ ] Code follows Python conventions (PEP 8)
-- [ ] Functions have clear type hints
-- [ ] Complex logic has inline comments
+
+- [x] Code follows Python conventions (PEP 8)
+- [x] Functions have clear type hints
+- [x] Complex logic has inline comments
 
 **Extensibility:**
-- [ ] Phase 1.5 enhancement requires < 2 hours refactoring
-- [ ] Storage layer supports multi-location with minimal changes
-- [ ] CLI accepts new parameters without breaking existing commands
+
+- [x] v1.1.0 enhancement required < 2 hours refactoring (StorageManager added)
+- [x] Storage layer supports multi-location with minimal changes (--output-dir parameter)
+- [x] CLI accepts new parameters without breaking existing commands (backward compatible)
 
 **Reliability:**
-- [ ] Error handling covers all subprocess failure modes
-- [ ] Timeout protection prevents infinite hangs
-- [ ] File operations handle permission/space errors
+
+- [x] Error handling covers all subprocess failure modes
+- [x] Timeout protection prevents infinite hangs
+- [x] File operations handle permission/space errors
+
+**Validation Date:** 2025-11-04 (v1.1.0 Release)
+**Validated By:** Sarah (Product Owner) - Based on actual implementation and QA-approved stories 2.1, 2.2, 2.3
 
 ---
 
