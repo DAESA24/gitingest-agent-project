@@ -213,6 +213,7 @@ execute/__pycache__/
 execute/.pytest_cache/
 execute/.coverage
 execute/*.egg-info/
+execute/test-output/
 
 # Claude Code local settings (user-specific permissions and config)
 .claude/settings.local.json
