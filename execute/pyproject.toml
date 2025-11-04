@@ -29,7 +29,9 @@ only-include = [
     "token_counter.py",
     "workflow.py",
     "storage.py",
+    "storage_manager.py",
     "extractor.py",
+    "exceptions.py",
 ]
 
 [tool.pytest.ini_options]

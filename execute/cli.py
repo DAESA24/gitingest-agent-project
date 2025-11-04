@@ -58,17 +58,34 @@ def gitingest_agent():
 
 @gitingest_agent.command()
 @click.argument('url')
-def check_size(url: str):
+@click.option('--output-dir', type=click.Path(), default=None,
+              help='Custom output directory (default: auto-detect based on current directory)')
+def check_size(url: str, output_dir: str):
     """
     Check token count and determine extraction strategy.
 
     Args:
         url: GitHub repository URL
+        output_dir: Optional custom output directory
 
     Example:
         gitingest-agent check-size https://github.com/user/repo
+        gitingest-agent check-size https://github.com/user/repo --output-dir ./my-analyses
     """
     ensure_execute_directory()
+
+    # Validate and prepare output directory if provided
+    output_path = None
+    if output_dir:
+        output_path = Path(output_dir).resolve()
+        if not output_path.exists():
+            if click.confirm(f"Directory {output_path} doesn't exist. Create it?"):
+                output_path.mkdir(parents=True, exist_ok=True)
+                click.echo(f"Created directory: {output_path}")
+            else:
+                click.echo("Aborted.")
+                raise click.Abort()
+
     try:
         click.echo("Checking repository size...")
 
@@ -93,7 +110,9 @@ def check_size(url: str):
 
 @gitingest_agent.command()
 @click.argument('url')
-def extract_full(url: str):
+@click.option('--output-dir', type=click.Path(), default=None,
+              help='Custom output directory (default: auto-detect based on current directory)')
+def extract_full(url: str, output_dir: str):
     """
     Extract entire repository to data/ directory.
 
@@ -102,11 +121,26 @@ def extract_full(url: str):
 
     Args:
         url: GitHub repository URL
+        output_dir: Optional custom output directory
 
     Example:
         gitingest-agent extract-full https://github.com/octocat/Hello-World
+        gitingest-agent extract-full https://github.com/octocat/Hello-World --output-dir ./my-analyses
     """
     ensure_execute_directory()
+
+    # Validate and prepare output directory if provided
+    output_path = None
+    if output_dir:
+        output_path = Path(output_dir).resolve()
+        if not output_path.exists():
+            if click.confirm(f"Directory {output_path} doesn't exist. Create it?"):
+                output_path.mkdir(parents=True, exist_ok=True)
+                click.echo(f"Created directory: {output_path}")
+            else:
+                click.echo("Aborted.")
+                raise click.Abort()
+
     try:
         # Parse repository name
         repo_name = parse_repo_name(url)
@@ -114,14 +148,14 @@ def extract_full(url: str):
         click.echo("Extracting full repository...")
 
         # Extract (returns path and encoding errors)
-        output_path, encoding_errors = extractor.extract_full(url, repo_name)
+        extraction_path, encoding_errors = extractor.extract_full(url, repo_name, output_dir=output_path)
 
         # Count tokens in result
-        token_count = count_tokens_from_file(output_path)
+        token_count = count_tokens_from_file(extraction_path)
         formatted = format_token_count(token_count)
 
         # Display confirmation
-        click.echo(f"[OK] Saved to: {output_path}")
+        click.echo(f"[OK] Saved to: {extraction_path}")
         click.echo(f"Token count: {formatted}")
 
         # Display encoding warnings if present
@@ -147,7 +181,9 @@ def extract_full(url: str):
 
 @gitingest_agent.command()
 @click.argument('url')
-def extract_tree(url: str):
+@click.option('--output-dir', type=click.Path(), default=None,
+              help='Custom output directory (default: auto-detect based on current directory)')
+def extract_tree(url: str, output_dir: str):
     """
     Extract repository tree structure.
 
@@ -157,22 +193,37 @@ def extract_tree(url: str):
 
     Args:
         url: GitHub repository URL
+        output_dir: Optional custom output directory
 
     Example:
         gitingest-agent extract-tree https://github.com/fastapi/fastapi
+        gitingest-agent extract-tree https://github.com/fastapi/fastapi --output-dir ./my-analyses
     """
     ensure_execute_directory()
+
+    # Validate and prepare output directory if provided
+    output_path = None
+    if output_dir:
+        output_path = Path(output_dir).resolve()
+        if not output_path.exists():
+            if click.confirm(f"Directory {output_path} doesn't exist. Create it?"):
+                output_path.mkdir(parents=True, exist_ok=True)
+                click.echo(f"Created directory: {output_path}")
+            else:
+                click.echo("Aborted.")
+                raise click.Abort()
+
     try:
         repo_name = parse_repo_name(url)
 
         click.echo("Extracting tree structure...")
 
         # Extract tree (returns path, content, and encoding errors)
-        output_path, tree_content, encoding_errors = extractor.extract_tree(url, repo_name)
+        extraction_path, tree_content, encoding_errors = extractor.extract_tree(url, repo_name, output_dir=output_path)
 
         # Display success and path (tree content saved to file due to encoding issues on Windows)
         click.echo(f"\n[OK] Tree structure extracted")
-        click.echo(f"[OK] Saved to: {output_path}")
+        click.echo(f"[OK] Saved to: {extraction_path}")
         click.echo(f"\nView the tree structure in the file above.")
 
         # Display encoding warnings if present
@@ -197,7 +248,9 @@ def extract_tree(url: str):
 @click.option('--type', 'content_type', required=True,
               type=click.Choice(['docs', 'installation', 'code', 'auto']),
               help='Type of content to extract')
-def extract_specific(url: str, content_type: str):
+@click.option('--output-dir', type=click.Path(), default=None,
+              help='Custom output directory (default: auto-detect based on current directory)')
+def extract_specific(url: str, content_type: str, output_dir: str):
     """
     Extract specific content from repository using filters with overflow prevention.
 
@@ -213,26 +266,41 @@ def extract_specific(url: str, content_type: str):
     Args:
         url: GitHub repository URL
         content_type: Type of content to extract
+        output_dir: Optional custom output directory
 
     Example:
         gitingest-agent extract-specific https://github.com/fastapi/fastapi --type docs
+        gitingest-agent extract-specific https://github.com/fastapi/fastapi --type docs --output-dir ./my-analyses
     """
     ensure_execute_directory()
+
+    # Validate and prepare output directory if provided
+    output_path = None
+    if output_dir:
+        output_path = Path(output_dir).resolve()
+        if not output_path.exists():
+            if click.confirm(f"Directory {output_path} doesn't exist. Create it?"):
+                output_path.mkdir(parents=True, exist_ok=True)
+                click.echo(f"Created directory: {output_path}")
+            else:
+                click.echo("Aborted.")
+                raise click.Abort()
+
     try:
         repo_name = parse_repo_name(url)
 
         # Initial extraction
         click.echo(f"Extracting {content_type} content...")
-        output_path, encoding_errors = extractor.extract_specific(url, repo_name, content_type)
+        extraction_path, encoding_errors = extractor.extract_specific(url, repo_name, content_type, output_dir=output_path)
 
         # Token re-check loop for overflow prevention
         while True:
             # Count tokens in extracted content
-            token_count = count_tokens_from_file(output_path)
+            token_count = count_tokens_from_file(extraction_path)
             formatted = format_token_count(token_count)
 
             # Display confirmation
-            click.echo(f"[OK] Saved to: {output_path}")
+            click.echo(f"[OK] Saved to: {extraction_path}")
             click.echo(f"Token count: {formatted}")
 
             # Display encoding warnings if present
@@ -282,7 +350,7 @@ def extract_specific(url: str, content_type: str):
 
                 # Re-extract with new content type
                 click.echo(f"\nExtracting {new_type} content...")
-                output_path, encoding_errors = extractor.extract_specific(url, repo_name, new_type)
+                extraction_path, encoding_errors = extractor.extract_specific(url, repo_name, new_type, output_dir=output_path)
                 content_type = new_type  # Update for next iteration
             else:
                 # Invalid choice - continue loop to re-prompt

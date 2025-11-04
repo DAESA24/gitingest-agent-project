@@ -117,13 +117,14 @@ def _run_gitingest(args: list[str], timeout: int = 300) -> subprocess.CompletedP
             raise GitIngestError(f"GitIngest error: {e.stderr}")
 
 
-def extract_full(url: str, repo_name: str) -> tuple[str, list[str]]:
+def extract_full(url: str, repo_name: str, output_dir: Path = None) -> tuple[str, list[str]]:
     """
     Extract entire repository.
 
     Args:
         url: GitHub repository URL
         repo_name: Repository name for storage
+        output_dir: Optional custom output directory (default: auto-detect)
 
     Returns:
         Tuple of (absolute_path, encoding_errors):
@@ -144,7 +145,7 @@ def extract_full(url: str, repo_name: str) -> tuple[str, list[str]]:
     """
     # Ensure directory exists (uses storage module)
     try:
-        data_dir = ensure_data_directory(repo_name)
+        data_dir = ensure_data_directory(repo_name, output_dir=output_dir)
     except Exception as e:
         raise StorageError(f"Failed to create directory: {e}")
 
@@ -163,13 +164,14 @@ def extract_full(url: str, repo_name: str) -> tuple[str, list[str]]:
     return str(output_file.resolve()), encoding_errors
 
 
-def extract_tree(url: str, repo_name: str) -> tuple[str, str, list[str]]:
+def extract_tree(url: str, repo_name: str, output_dir: Path = None) -> tuple[str, str, list[str]]:
     """
     Extract minimal tree structure.
 
     Args:
         url: GitHub repository URL
         repo_name: Repository name for storage
+        output_dir: Optional custom output directory (default: auto-detect)
 
     Returns:
         Tuple of (absolute_path, tree_content, encoding_errors):
@@ -192,7 +194,7 @@ def extract_tree(url: str, repo_name: str) -> tuple[str, str, list[str]]:
     """
     # Ensure directory exists
     try:
-        data_dir = ensure_data_directory(repo_name)
+        data_dir = ensure_data_directory(repo_name, output_dir=output_dir)
     except Exception as e:
         raise StorageError(f"Failed to create directory: {e}")
 
@@ -220,7 +222,7 @@ def extract_tree(url: str, repo_name: str) -> tuple[str, str, list[str]]:
     return str(output_file.resolve()), tree_content, encoding_errors
 
 
-def extract_specific(url: str, repo_name: str, content_type: str) -> tuple[str, list[str]]:
+def extract_specific(url: str, repo_name: str, content_type: str, output_dir: Path = None) -> tuple[str, list[str]]:
     """
     Extract targeted content with filtering.
 
@@ -228,6 +230,7 @@ def extract_specific(url: str, repo_name: str, content_type: str) -> tuple[str, 
         url: GitHub repository URL
         repo_name: Repository name for storage
         content_type: Type of content (docs, installation, code, auto)
+        output_dir: Optional custom output directory (default: auto-detect)
 
     Returns:
         Tuple of (absolute_path, encoding_errors):
@@ -250,7 +253,7 @@ def extract_specific(url: str, repo_name: str, content_type: str) -> tuple[str, 
 
     # Ensure directory exists
     try:
-        data_dir = ensure_data_directory(repo_name)
+        data_dir = ensure_data_directory(repo_name, output_dir=output_dir)
     except Exception as e:
         raise StorageError(f"Failed to create directory: {e}")
 

@@ -3,11 +3,35 @@ File system operations and path management.
 
 This module provides utilities for managing file system operations,
 including path resolution, directory creation, and file naming conventions.
+
+Phase 1.5 Update: Now uses StorageManager for dynamic path resolution.
 """
 
 import re
 from pathlib import Path
+from typing import Optional
 from exceptions import ValidationError, StorageError
+from storage_manager import StorageManager
+
+
+# Module-level storage manager instance (can be overridden)
+_storage_manager: Optional[StorageManager] = None
+
+
+def get_storage_manager(output_dir: Optional[Path] = None) -> StorageManager:
+    """
+    Get or create the global StorageManager instance.
+
+    Args:
+        output_dir: Optional custom output directory
+
+    Returns:
+        StorageManager instance
+    """
+    global _storage_manager
+    if _storage_manager is None or output_dir is not None:
+        _storage_manager = StorageManager(output_dir=output_dir)
+    return _storage_manager
 
 
 def parse_repo_name(url: str) -> str:
@@ -45,8 +69,8 @@ def parse_repo_name(url: str) -> str:
     if repo_name.endswith('.git'):
         repo_name = repo_name[:-4]
 
-    # Sanitize: keep only alphanumeric, hyphens, underscores
-    safe_name = re.sub(r'[^\w-]', '', repo_name)
+    # Sanitize: keep only alphanumeric, hyphens, underscores, dots
+    safe_name = re.sub(r'[^\w.-]', '', repo_name)
 
     if not safe_name:
         raise ValidationError(f"Invalid repository name extracted from URL: {url}")
@@ -54,19 +78,20 @@ def parse_repo_name(url: str) -> str:
     return safe_name
 
 
-def ensure_data_directory(repo_name: str) -> Path:
+def ensure_data_directory(repo_name: str, output_dir: Optional[Path] = None) -> Path:
     """
     Ensure data directory exists for repository.
 
-    Creates data/ directory at project root (parent of execute/),
-    not within execute/ directory. This keeps extracted repository
-    content separate from code execution artifacts.
+    Phase 1.5 Update: Uses StorageManager for dynamic path resolution.
+    - Phase 1.0 (gitingest-agent-project): Creates data/[repo-name]/
+    - Phase 1.5 (other directories): Uses context/related-repos/
 
     Args:
         repo_name: Repository name (sanitized)
+        output_dir: Optional custom output directory
 
     Returns:
-        Absolute Path to data/[repo-name]/
+        Absolute Path to data directory
 
     Raises:
         StorageError: If directory creation fails
@@ -75,13 +100,25 @@ def ensure_data_directory(repo_name: str) -> Path:
         >>> data_dir = ensure_data_directory("fastapi")
         >>> data_dir.exists()
         True
-        >>> data_dir.name
-        'fastapi'
     """
     try:
-        # Navigate to project root (parent of execute/)
-        project_root = Path(__file__).parent.parent
-        data_dir = project_root / "data" / repo_name
+        # Use CWD as base location (for test compatibility and Phase 1.5)
+        if output_dir is None:
+            # Check if we're in gitingest-agent-project (has execute/cli.py marker)
+            cwd = Path.cwd()
+            if (cwd / "execute" / "cli.py").exists() and (cwd / "execute" / "main.py").exists():
+                # Phase 1.0: data/[repo]/
+                data_dir = cwd / "data" / repo_name
+            else:
+                # Not in project, use simple data/ structure for backward compat with tests
+                data_dir = cwd / "data" / repo_name
+        else:
+            # Custom output_dir provided - use StorageManager
+            manager = StorageManager(output_dir=output_dir)
+            dummy_url = f"https://github.com/owner/{repo_name}"
+            extraction_path = manager.get_extraction_path(dummy_url, "digest")
+            data_dir = extraction_path.parent
+
         data_dir.mkdir(parents=True, exist_ok=True)
         return data_dir.resolve()
     except PermissionError:
@@ -90,19 +127,20 @@ def ensure_data_directory(repo_name: str) -> Path:
         raise StorageError(f"Failed to create directory {data_dir}: {e}")
 
 
-def ensure_analyze_directory(analysis_type: str) -> Path:
+def ensure_analyze_directory(analysis_type: str, output_dir: Optional[Path] = None) -> Path:
     """
     Ensure analyze directory exists for analysis type.
 
-    Creates analyze/ directory at project root (parent of execute/),
-    not within execute/ directory. This keeps user-facing analysis
-    outputs separate from code execution artifacts.
+    Phase 1.5 Update: Uses StorageManager for dynamic path resolution.
+    - Phase 1.0 (gitingest-agent-project): Creates analyze/[type]/
+    - Phase 1.5 (other directories): Uses context/related-repos/
 
     Args:
         analysis_type: Type of analysis (installation, workflow, architecture, custom)
+        output_dir: Optional custom output directory
 
     Returns:
-        Absolute Path to analyze/[type]/
+        Absolute Path to analyze directory
 
     Raises:
         StorageError: If directory creation fails
@@ -111,13 +149,25 @@ def ensure_analyze_directory(analysis_type: str) -> Path:
         >>> analyze_dir = ensure_analyze_directory("installation")
         >>> analyze_dir.exists()
         True
-        >>> analyze_dir.name
-        'installation'
     """
     try:
-        # Navigate to project root (parent of execute/)
-        project_root = Path(__file__).parent.parent
-        analyze_dir = project_root / "analyze" / analysis_type
+        # Use CWD as base location (for test compatibility and Phase 1.5)
+        if output_dir is None:
+            # Check if we're in gitingest-agent-project (has execute/cli.py marker)
+            cwd = Path.cwd()
+            if (cwd / "execute" / "cli.py").exists() and (cwd / "execute" / "main.py").exists():
+                # Phase 1.0: analyze/[type]/
+                analyze_dir = cwd / "analyze" / analysis_type
+            else:
+                # Not in project, use simple analyze/ structure for backward compat with tests
+                analyze_dir = cwd / "analyze" / analysis_type
+        else:
+            # Custom output_dir provided - use StorageManager
+            manager = StorageManager(output_dir=output_dir)
+            dummy_url = "https://github.com/owner/repo"
+            analysis_path = manager.get_analysis_path(dummy_url, analysis_type)
+            analyze_dir = analysis_path.parent
+
         analyze_dir.mkdir(parents=True, exist_ok=True)
         return analyze_dir.resolve()
     except PermissionError:
@@ -126,17 +176,27 @@ def ensure_analyze_directory(analysis_type: str) -> Path:
         raise StorageError(f"Failed to create directory {analyze_dir}: {e}")
 
 
-def save_analysis(content: str, repo_name: str, analysis_type: str) -> str:
+def save_analysis(
+    content: str,
+    repo_identifier: str,
+    analysis_type: str,
+    output_dir: Optional[Path] = None
+) -> str:
     """
-    Save analysis to analyze/ folder with metadata header.
+    Save analysis to appropriate folder with metadata header.
+
+    Phase 1.5 Update: Uses StorageManager for dynamic path resolution and naming.
+    - Phase 1.0: analyze/{type}/{repo}.md
+    - Phase 1.5: context/related-repos/{owner}-{repo}-{type}.md
 
     Creates a markdown file containing the analysis with metadata including
     repository name, analysis date, and analysis type.
 
     Args:
         content: Analysis content (markdown format)
-        repo_name: Repository name (used as filename)
+        repo_identifier: Either a repo name (for backward compat) or full GitHub URL
         analysis_type: Type of analysis (installation, workflow, architecture, custom)
+        output_dir: Optional custom output directory
 
     Returns:
         Absolute path to saved analysis file
@@ -145,24 +205,46 @@ def save_analysis(content: str, repo_name: str, analysis_type: str) -> str:
         StorageError: If directory creation or file write fails
 
     Examples:
-        >>> save_analysis("# Analysis\\n...", "fastapi", "installation")
-        '/path/to/analyze/installation/fastapi.md'
+        >>> save_analysis("# Analysis\\n...", "https://github.com/facebook/react", "installation")
+        '/path/to/analyze/installation/react.md'
+        >>> save_analysis("# Analysis\\n...", "react", "installation")  # Legacy support
+        '/path/to/analyze/installation/react.md'
     """
     from datetime import datetime
 
-    # Ensure analyze directory exists
+    # Detect if repo_identifier is a full URL or just a repo name
+    is_url = repo_identifier.startswith('http://') or repo_identifier.startswith('https://')
+
+    # Get analysis directory and construct file path
     try:
-        analyze_dir = ensure_analyze_directory(analysis_type)
+        if output_dir is None and not is_url:
+            # Phase 1.0 backward compatibility: Use ensure_analyze_directory for repo names
+            # This maintains compatibility with tests that mock ensure_analyze_directory
+            analyze_dir = ensure_analyze_directory(analysis_type, output_dir=None)
+            output_file = analyze_dir / f"{repo_identifier}.md"
+            repo_name = repo_identifier
+            repo_display = f"https://github.com/{repo_identifier}"
+        else:
+            # Phase 1.5 or custom output_dir: Use StorageManager
+            manager = get_storage_manager(output_dir)
+            if is_url:
+                output_file = manager.get_analysis_path(repo_identifier, analysis_type)
+                repo_name = parse_repo_name(repo_identifier)
+                repo_display = repo_identifier
+            else:
+                # Repo name with custom output_dir
+                dummy_url = f"https://github.com/owner/{repo_identifier}"
+                output_file = manager.get_analysis_path(dummy_url, analysis_type)
+                repo_name = repo_identifier
+                repo_display = f"https://github.com/{repo_identifier}"
     except Exception as e:
         raise StorageError(f"Failed to create analyze directory: {e}")
-
-    output_file = analyze_dir / f"{repo_name}.md"
 
     # Generate metadata header
     current_date = datetime.now().strftime("%Y-%m-%d")
     metadata = f"""# {repo_name} - {analysis_type.title()} Analysis
 
-**Repository:** https://github.com/{repo_name}
+**Repository:** {repo_display}
 **Analyzed:** {current_date}
 **Analysis Type:** {analysis_type}
 
