@@ -426,31 +426,166 @@ def extract_full(url, format):
 
 ---
 
-## 2.3 Future Enhancement Ideas
+## 2.3 Claude Code Skills Integration
 
-### 2.3.1 Multi-Repository Analysis
+### 2.3.1 Overview
+
+**Status:** 📋 Proposed (Alternative to 2.1)
+
+**Problem Statement:**
+
+Same context efficiency problem as 2.1, but solved through Claude Code's native Skills system rather than CLI orchestration.
+
+**Proposed Solution:**
+
+Create a Claude Code Skill that encapsulates GitIngest Agent workflow, loaded on-demand only when GitHub URLs are detected.
+
+**Reference Implementation:**
+- Leverage Anthropic's skill-creator skill: `C:\Users\drewa\.claude\skills\skill-creator`
+- Follow Anthropic best practices for skill development
+- Create `.claude/skills/gitingest-agent.md` in project
+
+**Value Proposition:**
+- Native Claude Code integration
+- On-demand loading (0 tokens when idle)
+- Pattern-based activation (GitHub URL detection)
+- Portable across projects (skill can be installed globally)
+
+**Trade-offs vs. Section 2.1:**
+
+| Aspect | 2.1 CLI Orchestration | 2.3 Skills Integration |
+|--------|----------------------|------------------------|
+| Context efficiency | 300 tokens always loaded | 0 tokens when idle |
+| Direct CLI usage | ✅ Yes | ❌ No (requires Claude Code) |
+| Scriptability | ✅ Yes | ❌ No |
+| Integration complexity | Higher (new CLI command) | Lower (just a skill file) |
+| Portability | ✅ Works anywhere | Requires Claude Code |
+
+---
+
+### 2.3.2 User Stories
+
+#### **User Story 2.3.1: On-Demand Skill Loading**
+
+As a Claude Code user,
+I want GitIngest Agent workflow loaded only when I provide a GitHub URL,
+So that I have zero context overhead when not analyzing repositories.
+
+**Acceptance Criteria:**
+- [ ] Skill file created: `.claude/skills/gitingest-agent.md`
+- [ ] Skill contains complete 9-step workflow instructions
+- [ ] Skill activates on GitHub URL pattern detection
+- [ ] Zero tokens consumed when skill not active
+- [ ] Skill can be installed globally or per-project
+
+---
+
+#### **User Story 2.3.2: Leverage Anthropic Best Practices**
+
+As a developer creating the GitIngest Agent skill,
+I want to use Anthropic's skill-creator skill as a guide,
+So that I follow established patterns and best practices.
+
+**Acceptance Criteria:**
+- [ ] Review `C:\Users\drewa\.claude\skills\skill-creator` for patterns
+- [ ] Skill structure matches Anthropic conventions
+- [ ] Proper YAML frontmatter with metadata
+- [ ] Clear trigger patterns defined
+- [ ] Documentation for users on skill installation
+
+---
+
+### 2.3.3 Implementation Plan
+
+**Phase 1: Research (2 hours)**
+- Study skill-creator skill structure
+- Identify trigger patterns for GitHub URLs
+- Define skill metadata and interface
+
+**Phase 2: Skill Creation (4 hours)**
+- Create `.claude/skills/gitingest-agent.md`
+- Migrate workflow from CLAUDE.md to skill
+- Test activation on GitHub URL patterns
+- Verify zero context overhead when idle
+
+**Phase 3: Documentation (2 hours)**
+- Document skill installation (global vs. project-specific)
+- Create usage examples
+- Update README with skill option
+
+**Phase 4: Testing (2 hours)**
+- Test across multiple directories
+- Verify multi-location output (Phase 1.5) works with skill
+- Test pattern matching edge cases
+
+**Total Effort:** ~10 hours
+
+---
+
+### 2.3.4 Decision Point
+
+**Should we pursue Section 2.1 (CLI) or Section 2.3 (Skills)?**
+
+This decision should be made based on:
+- Primary use case (Claude Code vs. direct CLI)
+- Context efficiency goals (300 tokens vs. 0 tokens)
+- Scriptability requirements (CI/CD needs?)
+- Development effort (new CLI command vs. skill file)
+
+**Recommendation:** Create skill FIRST (lower effort), then evaluate if CLI orchestration still needed.
+
+---
+
+### 2.3.5 Success Metrics
+
+**Context Efficiency:**
+- [ ] 0 tokens consumed when skill not active
+- [ ] Skill loads <3k tokens when activated
+- [ ] 100% context reduction vs. always-loaded CLAUDE.md
+
+**Usability:**
+- [ ] Skill activates reliably on GitHub URLs
+- [ ] No false positives (non-GitHub URLs)
+- [ ] Clear user feedback when skill activates
+
+**Adoption:**
+- [ ] Skill installable globally for all projects
+- [ ] Documentation clear for users
+- [ ] Community interest (if open-sourced)
+
+---
+
+## 2.4 Future Enhancement Ideas
+
+### 2.4.1 Multi-Repository Analysis
 
 Analyze multiple related repositories in a single workflow (e.g., microservices architecture).
 
-### 2.3.2 Incremental Updates
+### 2.4.2 Incremental Updates
 
 Re-analyze only changed files since last extraction (git diff-based).
 
-### 2.3.3 Custom Analysis Templates
+### 2.4.3 Custom Analysis Templates
 
 User-defined analysis templates with placeholders and custom prompts.
 
-### 2.3.4 Analysis Comparison
+### 2.4.4 Analysis Comparison
 
 Compare analyses across repository versions or different repositories.
 
-### 2.3.5 CI/CD Integration
+### 2.4.5 CI/CD Integration
 
 GitHub Actions workflow for automated repository analysis on PR/release.
 
 ---
 
 ## Version History
+
+- **2025-11-06:** Added Section 2.3 - Claude Code Skills Integration
+  - Alternative approach to context efficiency using Claude Code Skills
+  - References Anthropic's skill-creator skill for best practices
+  - User stories and implementation plan (~10 hours)
+  - Decision framework for choosing CLI vs. Skills approach
 
 - **2025-11-04:** Initial v2.0 roadmap created
   - Context-efficient agent architecture
@@ -465,9 +600,10 @@ GitHub Actions workflow for automated repository analysis on PR/release.
 - [Phase 1.5 User Stories](prd.md#115-phase-15-multi-location-output) - Current active development
 - [Architecture Documentation](architecture.md) - System design
 - [TOON Specification](https://github.com/toon-format/toon) - Token format details
+- [Anthropic Skill Creator](C:\Users\drewa\.claude\skills\skill-creator) - Reference for skill development
 
 ---
 
 **Document Status:** ✅ Complete
-**Last Updated:** 2025-11-04
+**Last Updated:** 2025-11-06
 **Next Review:** After Phase 1.5 completion
